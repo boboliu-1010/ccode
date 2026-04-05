@@ -6,6 +6,12 @@
 
 ### 架构总览
 
+先看这张图，只抓整体分层，不用纠结实现细节。阅读重点是：
+
+- `main.tsx` 是总装配入口
+- `query.ts` 是 turn loop 核心
+- 其余模块大多是在提供能力、状态或约束
+
 ```mermaid
 flowchart TD
     A["main.tsx<br/>启动与总装配"] --> B["Settings / Auth / Policy<br/>配置、认证、策略"]
@@ -18,7 +24,7 @@ flowchart TD
     B --> B3["services/remoteManagedSettings"]
     B --> B4["services/policyLimits"]
 
-    E --> F["query.ts<br/>主代理循环"]
+    E --> F["query.ts<br/>turn loop"]
     F --> G["services/api/client.ts / claude.ts<br/>模型 API 适配层"]
     F --> H["services/tools/*<br/>工具调度与执行"]
 
@@ -30,7 +36,17 @@ flowchart TD
     A --> L["skills/*<br/>Skills 扩展层"]
 ```
 
+如果只想先建立一个粗模型，可以把它记成一句话：`main.tsx` 把系统装起来，`query.ts` 让系统跑起来，周边模块决定系统能做什么、不能做什么。
+
 ### 主执行链路
+
+第二张图比第一张更偏运行时。这里重点看中间那条闭环：
+
+- 用户输入进入 `main.tsx`
+- `query.ts` 调模型
+- 模型如果发出 `tool_use`，就进入 tool execution
+- `tool_result` 再回到 `query.ts`
+- 然后继续下一轮
 
 ```mermaid
 flowchart TD
@@ -38,7 +54,7 @@ flowchart TD
     B --> C["读取 settings / auth / policy / managed settings"]
     C --> D["构造 commands / tools / app state"]
     D --> E["QueryEngine 或 REPL 路径"]
-    E --> F["query.ts 主循环"]
+    E --> F["query.ts turn loop"]
     F --> G["services/api/claude.ts"]
     G --> H["模型返回 assistant / tool_use"]
     H --> I{"是否 tool_use"}
@@ -49,13 +65,15 @@ flowchart TD
     M --> F
 ```
 
+后面正文基本就是把这条链按模块拆开讲。
+
 ## 1. 先给结论：这个仓库是什么
 
 这不是一个简单的聊天 CLI，也不是一份薄薄的 SDK demo。它更接近一个完整的本地代理运行时，核心由六层组成：
 
 - CLI 与终端交互层
 - 会话与状态管理层
-- LLM 主循环与工具调用层
+- LLM turn loop 与工具调用层
 - 认证与 API 适配层
 - 企业策略与远程托管配置层
 - MCP / 插件 / Skills 扩展层
@@ -68,7 +86,7 @@ flowchart TD
 - [src/Tool.ts](/Users/bobo/code/claude-code-source-code/src/Tool.ts) 和 [src/tools.ts](/Users/bobo/code/claude-code-source-code/src/tools.ts)：工具协议与注册中心
 - [src/services/*](/Users/bobo/code/claude-code-source-code/src/services/)：API、MCP、策略、分析、插件等产品化能力
 
-## 2. 建议怎么读这份代码
+## 2. 阅读地图
 
 如果是第一次进入仓库，建议按下面顺序读：
 
@@ -88,7 +106,7 @@ flowchart TD
 14. [src/utils/plugins/pluginLoader.ts](/Users/bobo/code/claude-code-source-code/src/utils/plugins/pluginLoader.ts)
 15. [src/commands.ts](/Users/bobo/code/claude-code-source-code/src/commands.ts)
 
-读法上建议先抓“主链路”，再看子系统；先看启动、认证、请求、工具回路，再看插件、MCP 和企业控制面。
+阅读顺序上，建议先抓“主链路”，再看子系统；先看启动、认证、请求、tool execution 回路，再看插件、MCP 和控制相关模块。
 
 ## 3. 启动与主链路
 
@@ -159,7 +177,7 @@ flowchart TD
 
 这一层主要由 [src/main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx)、[src/QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts) 和 [src/Tool.ts](/Users/bobo/code/claude-code-source-code/src/Tool.ts) 共同完成。
 
-#### 阶段 C：主循环向模型发请求
+#### 阶段 C：turn loop 向模型发请求
 
 `query.ts` 调 API 层时，会：
 
@@ -183,7 +201,7 @@ flowchart TD
 - 请求中：工具权限检查、sandbox / 路径约束、managed settings 控制的 hooks / plugin / MCP 行为
 - 请求后：认证错误翻译、401 恢复、被关闭能力直接报错或退出
 
-#### 阶段 E：工具执行回路
+#### 阶段 E：tool execution 回路
 
 当模型返回 `tool_use` 时，系统会：
 
@@ -193,7 +211,7 @@ flowchart TD
 4. 根据并发安全性决定串行或并行
 5. 执行工具并生成 `tool_result`
 6. 把结果消息追加回会话
-7. 重新回到主循环
+7. 重新回到 turn loop
 
 这就是这套代码真正的代理闭环。
 
@@ -211,7 +229,7 @@ flowchart TD
 
 ## 4. 核心执行层
 
-### 4.1 `query.ts`：主代理循环
+### 4.1 `query.ts`：turn loop
 
 文件： [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
 
@@ -271,6 +289,8 @@ flowchart TD
    - 做 compact / retry / continuation
    - 结束本次 turn
 
+先看下面这张 flowchart。它表达的是 turn loop 的结构，不是精确时序：
+
 ```mermaid
 flowchart TD
     A["当前 messages"] --> B["tool result budget / snip / microcompact"]
@@ -288,6 +308,48 @@ flowchart TD
     L --> A
 ```
 
+阅读这张图时，可以分三段理解：
+
+- 左边：发请求之前如何整理 context
+- 中间：如何调用模型并接收流式结果
+- 右边：一旦出现 `tool_use`，怎样执行工具并把结果写回消息
+
+再看下面这张 sequence diagram，它表达的是同一个 turn 里真正的往返关系：
+
+```mermaid
+sequenceDiagram
+    participant Host as "QueryEngine / Host"
+    participant QL as "query.ts turn loop"
+    participant API as "services/api/claude.ts"
+    participant Model as "Claude API"
+    participant Exec as "Tool Orchestration"
+    participant Store as "messages / transcript"
+
+    Host->>QL: submit(messages, systemPrompt, toolUseContext)
+    QL->>QL: applyToolResultBudget / snip / microcompact / collapse / autocompact
+    QL->>API: build request + tool schemas
+    API->>Model: streaming request
+    Model-->>API: assistant text / thinking / tool_use
+    API-->>QL: stream events
+
+    alt no tool_use
+        QL->>Store: append assistant messages
+        QL-->>Host: terminal result
+    else has tool_use
+        QL->>Store: append assistant messages with tool_use
+        QL->>Exec: execute tool calls
+        Exec-->>QL: tool_result messages
+        QL->>Store: append tool_result
+        QL->>QL: decide continue / retry / compact / recovery
+        QL->>API: next model call with updated messages
+    end
+```
+
+如果前一张图是“结构图”，这一张就是“动作图”。它说明 Claude Code 的核心不是一次 API 调用，而是两类往返被稳定串起来：
+
+- `turn loop -> API -> model`
+- `turn loop -> tool executor -> messages`
+
 从实现上看，这条链主要落在：
 
 - [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
@@ -297,7 +359,7 @@ flowchart TD
 
 #### 为什么它是 Claude Code 的核心
 
-这块逻辑之所以重要，是因为 Claude Code 的产品价值并不只在“模型能回答”，而在“模型能持续工作”。`turn loop` 正是把这些能力串起来的运行时内核：
+这块逻辑之所以重要，是因为 Claude Code 的产品价值并不只在“模型能回答”，而在“模型能持续工作”。`turn loop` 正是把这些能力串起来的 runtime kernel：
 
 - 模型回答不是终点，`tool_use -> tool_result -> 再次采样` 才是闭环
 - 错误不是直接失败，而是先尝试恢复
@@ -319,9 +381,9 @@ flowchart TD
 - stop hook、tool summary、budget 都是 loop 内状态，而不是外层装饰  
   这说明它确实是 runtime kernel，而不是一次性 request wrapper。
 
-#### 一次 turn 内的恢复分支
+#### 一个 turn 内的 recovery 分支
 
-`query.ts` 最不像 demo 的地方，是它把很多“失败后怎么办”内建进了主循环。比较典型的分支包括：
+`query.ts` 最不像 demo 的地方，是它把很多“失败后怎么办”内建进了 turn loop。比较典型的分支包括：
 
 - `prompt_too_long`
 - `max_output_tokens`
@@ -332,7 +394,7 @@ flowchart TD
 
 所以更准确地说，它不是简单的 `while (needsFollowUp)`，而是一台带恢复分支的 turn state machine，只是状态没有完全显式化成独立模型。
 
-### 4.2 `QueryEngine.ts`：会话封装层
+### 4.2 `QueryEngine.ts`：conversation host
 
 文件： [src/QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts)
 
@@ -357,9 +419,9 @@ flowchart TD
 - permission denial 的跨 turn 记录
 - nested memory / discovered skills 的宿主持有
 
-### 4.3 compact：上下文压缩是怎么工作的
+### 4.3 compact：context compaction 是怎么工作的
 
-Claude Code 不是等上下文爆掉才简单截断，而是有一整套分层压缩路径。核心文件主要是：
+Claude Code 不是等上下文爆掉才简单截断，而是有一整套分层 compaction 路径。核心文件主要是：
 
 - [src/services/compact/autoCompact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/autoCompact.ts)
 - [src/services/compact/compact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/compact.ts)
@@ -373,18 +435,148 @@ Claude Code 不是等上下文爆掉才简单截断，而是有一整套分层�
 - `autocompact` / 手动 `/compact`：真正生成摘要，重建 post-compact 消息
 - `reactive compact`：在已经出现 `prompt_too_long` 之后触发的补救压缩
 
+#### 各种 compact 的触发条件
+
+这一块很容易混，因为代码里不只有一种 compact。更准确地说，当前 runtime 至少有 6 条相关路径：
+
+##### 1. `microcompact`
+
+触发特点：
+
+- 在 `query.ts` 里几乎每轮都会先经过这一步
+- 但它通常只会对“可 compact 的工具结果”生效
+- 重点不是总结整段会话，而是缩减大 tool result 的占用
+
+可以把它理解成“请求前的轻量整理”，不是完整的 conversation compaction。
+
+##### 2. `snip`
+
+触发特点：
+
+- 在 `microcompact` 之前执行
+- 主要用于按历史裁剪规则移除一部分旧消息
+- 只有相关 feature 打开时才会生效
+
+它更像一种 history trimming，而不是 summary-based compaction。
+
+##### 3. `context collapse`
+
+触发特点：
+
+- 在 `microcompact` 之后、`autocompact` 之前尝试
+- 目标是先用更便宜的 collapse 保住更细粒度的上下文
+- 只有对应 capability 开启时才参与 overflow 恢复链路
+
+从 `query.ts` 的顺序看，它的优先级高于 full autocompact，因为它尽量不把历史一次性压成单个 summary。
+
+##### 4. `autocompact`
+
+触发特点：
+
+- 按 token threshold 主动触发
+- 只有 auto-compact 开启时才会跑
+- 它发生在真正撞到 API 极限之前，属于 proactive compaction
+
+在 [src/services/compact/autoCompact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/autoCompact.ts) 里，是否触发主要取决于：
+
+- 当前 token 估算是否超过 autocompact threshold
+- 当前 query source 是否允许 autocompact
+- 是否已经因为失败次数过多触发 circuit breaker
+- 是否被 reactive-only / context-collapse 模式压制
+
+##### 5. `reactive compact`
+
+触发特点：
+
+- 在已经出现 `prompt_too_long` 或类似 overflow 错误后才触发
+- 属于 recovery path，不是 proactive path
+- 通常在更便宜的恢复动作之后才会进入
+
+也就是说，`reactive compact` 的前提不是“token 快满了”，而是“这轮已经失败了，需要靠 compact 把 loop 拉回来”。
+
+##### 6. 手动 `/compact`
+
+触发特点：
+
+- 只有用户显式调用 slash command 时触发
+- 不依赖 autocompact threshold
+- 走的是 full compaction 路径，但触发来源是用户，而不是 runtime 自动判断
+
+这条路径更像“人工控制上下文整形”。
+
+##### 7. `session memory compact`
+
+触发特点：
+
+- 它是 autocompact 路径中的一个替代分支
+- 只有相关实验开关与 session memory 条件满足时才会尝试
+- 如果不满足条件，会回退到 legacy full compact
+
+它的目标不是简单总结，而是优先借助 session memory 这类外化工件完成 compaction。
+
+#### 可以怎么记这些触发条件
+
+如果想快速记住，可以按“轻重”和“主动/被动”两条轴来分：
+
+- 轻量、主动：`microcompact`
+- 裁剪、主动：`snip`
+- 结构化整理、主动：`context collapse`
+- 完整摘要、主动：`autocompact`
+- 完整摘要、被动恢复：`reactive compact`
+- 完整摘要、人工触发：`/compact`
+- session-memory 优先的替代分支：`session memory compact`
+
+这样读 `query.ts` 和 `autoCompact.ts` 时，就不会把所有 compact 逻辑看成同一种东西。
+
+下面这张图把它们放回 runtime 顺序里看，会更直观一些：
+
+```mermaid
+flowchart TD
+    A["进入一轮 turn loop"] --> B["snip"]
+    B --> C["microcompact"]
+    C --> D["context collapse"]
+    D --> E{"是否超过 auto threshold"}
+    E -- 否 --> F["正常发请求"]
+    E -- 是 --> G["autocompact"]
+    G --> H{"session memory compact 可用?"}
+    H -- 是 --> I["session memory compact"]
+    H -- 否 --> J["full compact"]
+    I --> F
+    J --> F
+
+    F --> K{"API 是否返回 overflow / PTL?"}
+    K -- 否 --> L["继续正常 turn"]
+    K -- 是 --> M["recovery path"]
+    M --> N{"先尝试 collapse drain / 其他恢复"}
+    N --> O{"仍然失败?"}
+    O -- 否 --> F
+    O -- 是 --> P["reactive compact"]
+    P --> F
+
+    Q["用户执行 /compact"] --> J
+```
+
+这张图的阅读重点是：
+
+- `snip -> microcompact -> context collapse -> autocompact` 是请求前的主动整理链
+- `reactive compact` 是请求失败后的恢复链
+- `/compact` 是用户直接触发 full compact 的旁路
+- `session memory compact` 不是单独一套主流程，而是 autocompact 内可能选中的替代分支
+
 #### 每次 full compact 的大致流程
 
 真正的 full compact 可以概括成：
 
-1. 选出要压缩的历史消息
+1. 选出要 compaction 的历史消息
 2. 先做预处理：
    - 去掉会浪费预算的附件类型
    - 对图片/文档做占位替换
 3. 调 compact summarizer 生成摘要
 4. 清理或重置一部分本地缓存状态
 5. 生成 post-compact 附件与边界消息
-6. 把压缩后的消息重新拼成新的消息数组
+6. 把 compaction 后的消息重新拼成新的消息数组
+
+先看下面这张图。它讲的是一次 full compact 的内部流水线：
 
 ```mermaid
 flowchart TD
@@ -405,6 +597,13 @@ flowchart TD
     I --> I4["deferred tools / agents / MCP delta"]
 ```
 
+这张图可以分两半读：
+
+- 上半段：把旧历史压成 compact summary
+- 下半段：把 summary 重新包装成一个还能继续工作的 post-compact context
+
+其中最关键的不是 `summary`，而是后面的 `attachments`。Claude Code 的 compact 不是“做完摘要就结束”，而是要重建工作面。
+
 在 [src/services/compact/compact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/compact.ts) 里，最终拼装后的顺序是固定的：
 
 1. `boundaryMarker`
@@ -417,24 +616,26 @@ flowchart TD
 
 #### compact 之后到底保留了什么
 
-从 `compact.ts` 的实现看，压缩后并不是只剩“一段摘要”，而是尽量保留几个关键层次：
+从 `compact.ts` 的实现看，compact 后并不是只剩“一段摘要”，而是尽量保留几个关键层次：
 
 - compact boundary  
-  用系统消息标记“这里发生过一次压缩”，并带上 compact metadata。
+  用系统消息标记“这里发生过一次 compact”，并带上 compact metadata。
 - 会话摘要  
-  这是主要的自然语言压缩结果。
+  这是主要的自然语言 summary。
 - 需要保留的原始消息片段  
-  某些压缩路径不是全量替换，而是部分保留尾部消息。
+  某些 compaction 路径不是全量替换，而是部分保留尾部消息。
 - 文件恢复附件  
-  最近读过、且压缩后还需要继续操作的文件，会重新以 attachment 形式补回。
+  最近读过、且 compact 后还需要继续操作的文件，会重新以 attachment 形式补回。
 - plan 相关附件  
-  包括 plan file reference、plan mode 提醒，保证压缩后还能继续 plan 模式。
+  包括 plan file reference、plan mode 提醒，保证 compact 后还能继续 plan 模式。
 - invoked skills 附件  
-  已经调用过的 skills 会作为压缩后附件保留，避免 skill 指令整体消失。
+  已经调用过的 skills 会作为 post-compact attachment 保留，避免 skill 指令整体消失。
 - deferred tools / agent listing / MCP instruction delta  
-  这类“能力面提示”会在 compact 后重新宣布一次，确保第一轮 post-compact 仍然知道当前能力表面。
+  这类能力提示会在 compact 后重新宣布一次，确保第一轮 post-compact 仍然知道当前 capability surface。
 - session start hooks / post compact hooks 结果  
   某些 hook 结果也会进入 post-compact 消息序列。
+
+下面这张图不是流程图，而是 compact 前后结构对比图：
 
 ```mermaid
 flowchart LR
@@ -459,9 +660,11 @@ flowchart LR
     end
 ```
 
+它想表达的只有一件事：compact 不是“删旧消息”，而是“把旧消息换成 boundary + summary + 必要附件”。也正因为如此，compact 后系统还能继续当前任务，而不是只剩一段泛泛总结。
+
 #### 为什么 compact 之后还要补附件
 
-因为 full compact 本质上会吃掉大量原始历史。单靠一段 summary，不足以恢复当前工作面。所以压缩后的附件其实在补三类东西：
+因为 full compact 本质上会吃掉大量原始历史。单靠一段 summary，不足以恢复当前工作面。所以 post-compact attachments 实际在补三类东西：
 
 - 当前工作对象  
   例如最近读过的重要文件、plan 文件、task 输出。
@@ -474,7 +677,7 @@ flowchart LR
 
 #### compact 之后 skill 保留的具体方式
 
-这一点很重要。skill 并不是压缩后就完全丢了。`createSkillAttachmentIfNeeded()` 会把当前 agent 已调用过的 skills 重新作为 `invoked_skills` attachment 带回去，见 [src/services/compact/compact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/compact.ts)。
+这一点很重要。skill 并不是 compact 后就完全丢了。`createSkillAttachmentIfNeeded()` 会把当前 agent 已调用过的 skills 重新作为 `invoked_skills` attachment 带回去，见 [src/services/compact/compact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/compact.ts)。
 
 它的策略是：
 
@@ -496,7 +699,7 @@ flowchart LR
 
 在 `query.ts` 里，恢复顺序通常不是上来就 full compact，而是会先尝试更便宜的整理手段；只有这些不够时，才进入更重的 compact。
 
-### 4.4 skills：是怎么加载进上下文的
+### 4.4 skills：是怎么加载进 context 的
 
 skills 不是简单的 prompt 片段，而是一套“按来源加载、按时机激活、按调用注入”的机制。关键文件包括：
 
@@ -557,7 +760,7 @@ skills 不是简单的 prompt 片段，而是一套“按来源加载、按时�
 
 ##### 3. 真正调用 skill 时注入正文
 
-skill 真正“进入上下文”的关键时刻，不是被扫描到，而是被执行。
+skill 真正“进入 context”的关键时刻，不是被扫描到，而是被执行。
 
 在 [src/utils/processUserInput/processSlashCommand.tsx](/Users/bobo/code/claude-code-source-code/src/utils/processUserInput/processSlashCommand.tsx) 里，调用 prompt skill 时会：
 
@@ -569,8 +772,8 @@ skill 真正“进入上下文”的关键时刻，不是被扫描到，而是�
 
 所以更准确地说：
 
-- 扫描到 skill：只是“能力可见”
-- 真正调用 skill：才是“内容注入上下文”
+- 扫描到 skill：只是 capability 可见
+- 真正调用 skill：才是 content 注入 context
 
 #### conditional skills 是怎么激活的
 
@@ -582,7 +785,7 @@ skill 真正“进入上下文”的关键时刻，不是被扫描到，而是�
 - 只有当前工作目录内的路径才参与匹配
 - 一旦命中，就把 skill 激活为动态 skill
 
-这是一种很实用的上下文治理方式：让 skill 的可见性跟实际工作文件绑定。
+这是一种很实用的 context 治理方式：让 skill 的可见性跟实际工作文件绑定。
 
 ### 4.5 工具系统
 
@@ -859,6 +1062,8 @@ OAuth 登录成功后，客户端不仅保存 token，还会拉取 profile，把
 
 ### 5.7 认证调用链时序
 
+这张图只看主路径即可：浏览器 OAuth 登录成功后，客户端不仅拿 token，还会立刻拉 profile，并刷新本地与策略相关的运行时状态。
+
 ```mermaid
 sequenceDiagram
     participant User as "User"
@@ -884,7 +1089,14 @@ sequenceDiagram
     CLI->>CLI: 刷新 policy / remote settings / feature flags
 ```
 
+它对应的不是“单纯登录成功”，而是“登录完成后的一整轮状态重建”。这也是为什么认证、配置、策略三块在代码里会耦合得比较紧。
+
 ### 5.8 token 刷新与 401 恢复
+
+这张图讲的是运行中的 token lifecycle，不是初次登录。阅读时重点看两个分支：
+
+- 请求前发现 token 过期，走正常 refresh
+- 请求后收到 401，再走一次恢复路径
 
 ```mermaid
 sequenceDiagram
@@ -920,6 +1132,8 @@ sequenceDiagram
     end
 ```
 
+对应到代码上，这解释了为什么 [src/utils/auth.ts](/Users/bobo/code/claude-code-source-code/src/utils/auth.ts) 看起来会比普通 OAuth helper 重很多。它实际上承担了多进程环境下的 token runtime 管理。
+
 ### 5.9 认证、策略和配置为什么难拆
 
 一个很关键的实现点是：认证、策略和配置不是独立模块，它们会彼此影响。例如：
@@ -954,9 +1168,9 @@ sequenceDiagram
 - 处理 prompt cache、beta headers、task budget、thinking
 - 记录 API usage、cost、duration
 
-### 6.2 Prompt 栈不只是文案，而是一层控制面
+### 6.2 prompt stack 不只是文案，而是一层 control plane
 
-如果只把 prompt 看成“系统提示词文本”，会低估这套系统。当前代码里，prompt 更像一层运行时控制面。
+如果只把 prompt 看成“系统提示词文本”，会低估这套系统。当前代码里，prompt 更像一层 runtime control plane。
 
 关键点包括：
 
@@ -1037,7 +1251,7 @@ MCP 在这套系统里不是附属物，而是一级扩展面：MCP server 可�
 相关文件至少包括：
 
 - [src/utils/queryProfiler.ts](/Users/bobo/code/claude-code-source-code/src/utils/queryProfiler.ts)
-- [src/utils/promptCacheBreakDetection.ts](/Users/bobo/code/claude-code-source-code/src/utils/promptCacheBreakDetection.ts)
+- [src/services/api/promptCacheBreakDetection.ts](/Users/bobo/code/claude-code-source-code/src/services/api/promptCacheBreakDetection.ts)
 - [src/utils/analyzeContext.ts](/Users/bobo/code/claude-code-source-code/src/utils/analyzeContext.ts)
 
 从这些代码能看出三件事：
@@ -1088,7 +1302,7 @@ MCP 在这套系统里不是附属物，而是一级扩展面：MCP server 可�
 - `ToolUseContext` 过胖，容易变成高耦合总线
 - cache invariants 分散在多个文件里维护
 - continuity surface 很多，但缺少统一 taxonomy
-- permissions / tasks / remote execution 已经上升成控制面，却还分散在多个实现层
+- permissions / tasks / remote execution 已经上升成 control plane，却还分散在多个实现层
 
 这类问题不会立刻让系统失效，但会显著抬高后续演化和重构成本。
 
@@ -1265,7 +1479,7 @@ Bug 修复：
 
 ## 9. 总结
 
-如果只用一句话概括，这套代码本质上是一个“围绕 LLM 主循环构建的、可被企业管理的、可扩展的终端代理 runtime”。
+如果只用一句话概括，这套代码本质上是一个“围绕 LLM turn loop 构建的、可被企业管理的、可扩展的终端代理 runtime”。
 
 从阅读体验上，最值得先抓住的是三条线：
 
