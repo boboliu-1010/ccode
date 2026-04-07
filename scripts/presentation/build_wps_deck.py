@@ -666,14 +666,11 @@ def build():
     )
     add_content_slide(
         prs,
-        "分享目录",
+        "先给结论",
         [
-            "这份仓库本质上是什么",
-            "架构总览与主执行链路",
-            "turn loop、compact 与 context",
-            "tool pipeline、task runtime 与 mailbox",
-            "认证、策略、扩展系统与可观测性",
-            "最后总结与阅读建议",
+            "这不是“调用模型 API 的壳”，而是完整的 terminal agent runtime",
+            "最值得看的不是功能数量，而是 turn loop、recovery、compact、tool pipeline 这些长期工作机制",
+            "真正的工程价值在于：它已经为长会话、工具执行、恢复和策略控制付过账",
         ],
     )
     add_content_slide(
@@ -691,19 +688,45 @@ def build():
     add_kernel_vs_host_slide(prs)
     add_turn_loop_slide(prs)
     add_recovery_graph_slide(prs)
-    add_transcript_recovery_slide(prs)
-    add_tool_result_budget_slide(prs)
+    add_content_slide(
+        prs,
+        "为什么长会话还能继续工作",
+        [
+            "transcript / recovery 维护的是带 parentUuid 的可恢复消息链，而不是普通聊天记录",
+            "tool result budget / content replacement 解决的不是“截断输出”，而是“冻结输出命运”",
+            "大输出会外化到磁盘，再以稳定 preview 回到 context，恢复后还要重放同一 replacement",
+            "这两层一起保证：长会话不会因为工具输出过大或中断恢复而失去连续性",
+        ],
+        "关键点：系统维护的不是 UI 聊天记录，而是可继续运行的当前状态。",
+    )
     add_compact_slide(prs)
-    add_compact_meaning_slide(prs)
-    add_context_router_slide(prs)
+    add_content_slide(
+        prs,
+        "compact 之后到底保留什么",
+        [
+            "保留的不只是 summary，还包括 compact boundary、messagesToKeep 和文件恢复 attachment",
+            "plan_mode、invoked_skills、deferred tools delta 也会被带回新的工作面",
+            "compact 更像“重建可继续工作的最小 context”，不是把历史压成一段摘要",
+            "这也是为什么 compact 后模型还能接着做事，而不是只能泛泛续写",
+        ],
+    )
+    add_content_slide(
+        prs,
+        "skills 与 attachments 如何进入 context",
+        [
+            "skill 被扫描到时只是 capability 可见，真正调用时正文才进入 context",
+            "attachments.ts 会按 turn 注入 memories、dynamic skills、plan_mode、mailbox、deferred delta 等信息",
+            "很多运行时信息不是常驻消息，而是按 turn 临时重建的工作面",
+            "这也是 attachments.ts 更像 context router，而不是附件工具箱的原因",
+        ],
+    )
     add_permission_pipeline_slide(prs)
     add_task_runtime_slide(prs)
     add_state_carriers_slide(prs)
-    add_debugging_slide(prs)
     add_control_planes_slide(prs)
     add_code_quality_slide(prs)
+    add_debugging_slide(prs)
     add_takeaways_slide(prs)
-    add_lead_slide(prs, "谢谢", "这份源码最值得看的，不只是功能，而是它已经为长时间工作的 runtime 付过哪些工程账。")
 
     out = "docs/zh/00-代码总览与运行时走读-WPS兼容版.pptx"
     prs.save(out)
