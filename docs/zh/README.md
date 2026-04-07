@@ -5,7 +5,13 @@
 ## 总览
 
 - [00-代码总览与运行时走读.md](/Users/bobo/code/claude-code-source-code/docs/zh/00-代码总览与运行时走读.md)
-  这是总览型长文，适合先建立整体模型，再进入专题细读。
+  正式走读主稿，先建立主线，不追求把所有细节一次讲完。
+
+## 走读附录
+
+- [06-走读附录：长会话与恢复机制.md](/Users/bobo/code/claude-code-source-code/docs/zh/06-走读附录：长会话与恢复机制.md)
+- [07-走读附录：配置、认证与扩展系统.md](/Users/bobo/code/claude-code-source-code/docs/zh/07-走读附录：配置、认证与扩展系统.md)
+- [08-走读附录：Claude Code 使用技巧.md](/Users/bobo/code/claude-code-source-code/docs/zh/08-走读附录：Claude Code 使用技巧.md)
 
 ## 专题
 
@@ -18,7 +24,9 @@
 ## 建议阅读顺序
 
 1. [00-代码总览与运行时走读.md](/Users/bobo/code/claude-code-source-code/docs/zh/00-代码总览与运行时走读.md)
-2. [01-遥测与隐私分析.md](/Users/bobo/code/claude-code-source-code/docs/zh/01-遥测与隐私分析.md)
-3. [04-远程控制与紧急开关.md](/Users/bobo/code/claude-code-source-code/docs/zh/04-远程控制与紧急开关.md)
-4. [05-未来路线图.md](/Users/bobo/code/claude-code-source-code/docs/zh/05-未来路线图.md)
-5. 其余专题按兴趣阅读
+2. [06-走读附录：长会话与恢复机制.md](/Users/bobo/code/claude-code-source-code/docs/zh/06-走读附录：长会话与恢复机制.md)
+3. [07-走读附录：配置、认证与扩展系统.md](/Users/bobo/code/claude-code-source-code/docs/zh/07-走读附录：配置、认证与扩展系统.md)
+4. [01-遥测与隐私分析.md](/Users/bobo/code/claude-code-source-code/docs/zh/01-遥测与隐私分析.md)
+5. [04-远程控制与紧急开关.md](/Users/bobo/code/claude-code-source-code/docs/zh/04-远程控制与紧急开关.md)
+6. [05-未来路线图.md](/Users/bobo/code/claude-code-source-code/docs/zh/05-未来路线图.md)
+7. 其余专题按兴趣阅读
