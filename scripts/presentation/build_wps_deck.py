@@ -375,6 +375,261 @@ def add_control_planes_slide(prs):
     )
 
 
+def add_kernel_vs_host_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "不是一个内核，而是两层")
+    add_two_col_text(
+        slide,
+        "query.ts = runtime kernel",
+        [
+            "负责一轮怎么跑",
+            "推进 model -> tool -> model 闭环",
+            "处理 continue / retry / compact / stop",
+            "维护合法轨迹而不是纯文本输出",
+        ],
+        "QueryEngine.ts = conversation host",
+        [
+            "负责一段会话怎么活",
+            "保持多轮 messages 与 usage",
+            "预落盘 transcript",
+            "做 SDK / headless 输出投影",
+        ],
+    )
+
+
+def add_recovery_graph_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "turn loop 更像 recovery graph")
+
+    add_box(slide, 0.8, 2.4, 1.6, 0.75, "messages")
+    add_box(slide, 2.9, 2.4, 1.8, 0.75, "sample")
+    add_box(slide, 5.2, 2.4, 1.8, 0.75, "tool_use")
+    add_box(slide, 7.5, 2.4, 1.8, 0.75, "tool_result")
+    add_box(slide, 9.8, 2.4, 1.8, 0.75, "next turn", fill=ACCENT_2)
+    for x1, x2 in [(2.4, 2.9), (4.7, 5.2), (7.0, 7.5), (9.3, 9.8)]:
+        add_connector(slide, x1, 2.78, x2, 2.78)
+
+    add_box(slide, 3.0, 4.45, 2.2, 0.7, "prompt_too_long")
+    add_box(slide, 5.6, 4.45, 2.2, 0.7, "max_output_tokens")
+    add_box(slide, 8.2, 4.45, 2.2, 0.7, "reactive compact", fill=ACCENT_2)
+    add_connector(slide, 3.8, 3.15, 4.0, 4.45)
+    add_connector(slide, 6.1, 3.15, 6.7, 4.45)
+    add_connector(slide, 8.9, 5.15, 10.2, 3.15)
+
+    add_bullets(
+        slide,
+        [
+            "它维护的是可继续、可恢复、可压缩、可回放的合法轨迹",
+            "关键不是“发一次请求”，而是不断修正同一条 trajectory",
+        ],
+        top=5.45,
+        left=0.9,
+        width=11.0,
+        height=1.0,
+        size=16,
+    )
+
+
+def add_transcript_recovery_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "transcript / recovery 是 durable runtime 骨架")
+    add_bullets(
+        slide,
+        [
+            "sessionStorage.ts 保存的不是普通聊天记录，而是带 parentUuid 的消息链",
+            "progress message 不进入主链，compact boundary 会进入恢复协议",
+            "conversationRecovery.ts 做的不是反序列化，而是把历史修回 API 可继续状态",
+            "synthetic continuation 说明系统在恢复“未完成的 runtime”，不是回放聊天 UI",
+        ],
+        top=1.8,
+        left=0.85,
+        width=11.2,
+        height=3.3,
+    )
+    add_quote(slide, "一句话：transcript 提供可追溯历史，recovery 把它修回可继续运行的当前状态。")
+
+
+def add_tool_result_budget_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "tool result budget / content replacement 很关键")
+    add_bullets(
+        slide,
+        [
+            "它解决的不是“截断输出”，而是“冻结输出命运”",
+            "某个 tool_use_id 一旦决定替换，后面必须始终复用同一 replacement string",
+            "大输出先外化到磁盘，再用稳定 preview 进入 context",
+            "恢复后还要重放相同 replacement，才能保住 prompt cache prefix",
+        ],
+        top=1.8,
+        left=0.85,
+        width=11.2,
+        height=3.4,
+    )
+    add_quote(slide, "这层是 Claude Code 和很多 demo agent 最大的差别之一。")
+
+
+def add_compact_meaning_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "compact 的价值不是“做摘要”")
+    add_two_col_text(
+        slide,
+        "触发层次",
+        [
+            "microcompact",
+            "snip",
+            "context collapse",
+            "autocompact",
+            "reactive compact",
+        ],
+        "compact 后保留什么",
+        [
+            "boundary + summary",
+            "messagesToKeep",
+            "文件恢复 attachment",
+            "plan_mode / invoked_skills / deferred delta",
+        ],
+    )
+    add_quote(slide, "结论：compact 更像“重建可继续工作的最小 context”，不是只留一段总结。")
+
+
+def add_context_router_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "attachments.ts 是 context router")
+    add_bullets(
+        slide,
+        [
+            "每轮真正送给模型的 context，不只是 messages + system prompt",
+            "attachments.ts 会按 turn 注入 memories、dynamic skills、plan_mode、deferred_tools_delta、teammate_mailbox 等",
+            "很多运行时信息不是常驻消息，而是按 turn 临时重建工作面",
+            "这就是为什么它更像“第二调度层”，而不是附件工具箱",
+        ],
+        top=1.8,
+        left=0.85,
+        width=11.2,
+        height=3.5,
+    )
+
+
+def add_permission_pipeline_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "真正的 autonomy boundary 在 tool pipeline")
+
+    labels = ["schema", "hooks", "classifier", "permission", "tool.call", "post-hooks"]
+    x = 0.55
+    widths = [1.4, 1.4, 1.6, 1.6, 1.5, 1.6]
+    for label, w in zip(labels, widths):
+        add_box(slide, x, 2.45, w, 0.78, label, fill=ACCENT_2 if label == "tool.call" else WHITE)
+        x += w + 0.32
+    x = 0.55
+    for w in widths[:-1]:
+        add_connector(slide, x + w, 2.84, x + w + 0.32, 2.84)
+        x += w + 0.32
+
+    add_bullets(
+        slide,
+        [
+            "tool call 不是 findToolByName -> tool.call 这么短",
+            "permissions、hooks、classifier 在这里不是附属模块，而是同一条执行链",
+            "这决定了 Claude Code 的 autonomy boundary 不在 UI，而在 runtime pipeline 本身",
+        ],
+        top=4.15,
+        left=0.9,
+        width=11.0,
+        height=1.7,
+        size=16,
+    )
+
+
+def add_task_runtime_deeper_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "tasks / subagents / mailbox 不是附属功能")
+    add_bullets(
+        slide,
+        [
+            "Task.ts 先把执行体建模成一等对象：id、type、status、outputFile、outputOffset、notified",
+            "task/framework.ts 管注册、轮询、offset、GC、notification",
+            "runAgent.ts 会写 sidechain transcript 和 agent metadata，说明 subagent 是独立执行体",
+            "mailbox / pendingMessages 的投递发生在 turn 边界，协作语义更像 actor mailbox",
+        ],
+        top=1.8,
+        left=0.85,
+        width=11.2,
+        height=3.6,
+    )
+
+
+def add_state_carriers_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "文档里最重要的一组判断：状态载体分层")
+    add_two_col_text(
+        slide,
+        "turn-local / host-wide",
+        [
+            "messages：turn-local 工作面",
+            "ToolUseContext：工具执行总线",
+            "AppState：宿主共享状态",
+        ],
+        "durable / on-demand",
+        [
+            "transcript / sidechain：durable history",
+            "attachments / sidecar artifacts：按需重注入",
+            "不要把系统简化成“只有消息数组”",
+        ],
+    )
+
+
+def add_debugging_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "文档里的另一个高价值产出：调试入口")
+    add_two_col_text(
+        slide,
+        "遇到问题先看哪里",
+        [
+            "turn loop：query.ts / QueryEngine.ts",
+            "context 过大：compact.ts / microCompact.ts / analyzeContext.ts",
+            "工具被拒绝：toolExecution.ts / permissions / hooks",
+        ],
+        "排障价值",
+        [
+            "它把“读源码”变成“可直接排障”",
+            "能快速定位：为什么继续、为什么 compact、为什么拒绝、为什么变慢",
+            "这也是走读文档区别于普通目录介绍的地方",
+        ],
+    )
+
+
+def add_code_quality_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "代码质量判断也需要进 PPT")
+    add_two_col_text(
+        slide,
+        "优点",
+        [
+            "工程成熟度高，很多细节来自线上问题",
+            "auth、settings、tools、mcp、query 分层总体清楚",
+            "对 shell 安全、缓存、401、多进程锁处理扎实",
+        ],
+        "主要结构债",
+        [
+            "query.ts 接近 God Loop",
+            "ToolUseContext 过胖",
+            "cache invariants 分散",
+            "permissions / tasks / remote execution 已经上升成 control plane，但 owner 仍分散",
+        ],
+    )
+
+
 def add_takeaways_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
@@ -433,42 +688,20 @@ def build():
     )
     add_architecture_slide(prs)
     add_main_flow_slide(prs)
-    add_content_slide(
-        prs,
-        "为什么 query.ts 是核心",
-        [
-            "它不是一次 API 调用的包装层，而是 runtime kernel",
-            "负责准备 messages、context 治理、模型请求、streaming 输出",
-            "负责处理 tool_use / tool_result",
-            "负责决定 continue / retry / compact / stop",
-        ],
-    )
+    add_kernel_vs_host_slide(prs)
     add_turn_loop_slide(prs)
-    add_content_slide(
-        prs,
-        "QueryEngine.ts：conversation host",
-        [
-            "不是内核本身，而是会话宿主",
-            "负责保持多轮消息历史、聚合 usage、维护 permission denial",
-            "持有 readFileState、预落盘 transcript、做 SDK/headless 输出投影",
-            "可以简单记成：query.ts 负责一轮怎么跑，QueryEngine.ts 负责一段会话怎么活",
-        ],
-    )
-    add_content_slide(
-        prs,
-        "为什么长会话还能稳定工作",
-        [
-            "sessionStorage.ts 维护 durable transcript",
-            "conversationRecovery.ts 会过滤坏消息并补 continuation",
-            "tool result budget / content replacement 保护 prompt cache prefix",
-            "compact 的目标不是简单摘要，而是重建可继续工作的最小 context",
-        ],
-    )
+    add_recovery_graph_slide(prs)
+    add_transcript_recovery_slide(prs)
+    add_tool_result_budget_slide(prs)
     add_compact_slide(prs)
-    add_context_slide(prs)
-    add_tool_pipeline_slide(prs)
+    add_compact_meaning_slide(prs)
+    add_context_router_slide(prs)
+    add_permission_pipeline_slide(prs)
     add_task_runtime_slide(prs)
+    add_state_carriers_slide(prs)
+    add_debugging_slide(prs)
     add_control_planes_slide(prs)
+    add_code_quality_slide(prs)
     add_takeaways_slide(prs)
     add_lead_slide(prs, "谢谢", "这份源码最值得看的，不只是功能，而是它已经为长时间工作的 runtime 付过哪些工程账。")
 
