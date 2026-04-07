@@ -356,7 +356,7 @@ def add_task_runtime_slide(prs):
 def add_control_planes_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
-    add_title(slide, "为什么它更像产品化 runtime")
+    add_title(slide, "产品化 runtime 的控制面")
     add_two_col_text(
         slide,
         "控制面",
@@ -569,7 +569,7 @@ def add_task_runtime_deeper_slide(prs):
 def add_state_carriers_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
-    add_title(slide, "文档里最重要的一组判断：状态载体分层")
+    add_title(slide, "运行时状态载体")
     add_two_col_text(
         slide,
         "turn-local / host-wide",
@@ -590,7 +590,7 @@ def add_state_carriers_slide(prs):
 def add_debugging_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
-    add_title(slide, "文档里的另一个高价值产出：调试入口")
+    add_title(slide, "调试与排障入口")
     add_two_col_text(
         slide,
         "遇到问题先看哪里",
@@ -611,7 +611,7 @@ def add_debugging_slide(prs):
 def add_code_quality_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
-    add_title(slide, "代码质量判断也需要进 PPT")
+    add_title(slide, "代码质量与结构问题")
     add_two_col_text(
         slide,
         "优点",
@@ -633,7 +633,7 @@ def add_code_quality_slide(prs):
 def add_takeaways_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
-    add_title(slide, "最后只保留最重要的结论")
+    add_title(slide, "关键结论与阅读建议")
     add_two_col_text(
         slide,
         "读源码时先抓",
