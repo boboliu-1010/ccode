@@ -5,6 +5,60 @@
 对应正文：
 - [09-Claude Code 使用技巧与注意事项.md](/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude%20Code%20使用技巧与注意事项.md)
 
+## 0. 开场总结构图
+
+用途：
+- 这张图放在封面之后，用来先建立 Claude Code 的整体模型
+- 它回答的问题不是“每个模块怎么实现”，而是“使用技巧为什么会受到这些架构层影响”
+
+建议讲法：
+- 最上层是用户输入
+- 中间是 `prompt stack`、`turn loop`、`tool pipeline`
+- 下层是 tools / tasks / filesystem / shell
+- 右侧是 settings / auth / policy 这些 `control plane`
+- 结论是：用户使用技巧之所以有效，是因为它们在影响这条主执行链和外围控制面
+
+UML 总览图：
+
+```mermaid
+flowchart TD
+    U["User Prompt<br/>用户输入"] --> PS["Prompt Stack<br/>提示词栈"]
+    PS --> QE["QueryEngine<br/>Conversation Host / 会话宿主"]
+    QE --> QL["query.ts<br/>Turn Loop / 轮次循环"]
+    QL --> TP["Tool Pipeline<br/>工具执行流水线"]
+    TP --> TOOLS["Tools / Bash / Read / Edit<br/>工具层"]
+    TP --> TASKS["Tasks / Subagents / Mailbox<br/>任务与子代理"]
+    TOOLS --> ENV["Filesystem / Shell / MCP<br/>执行环境"]
+    TASKS --> ENV
+
+    CP["Settings / Auth / Policy<br/>Control Plane / 控制面"] -.约束与裁决.-> PS
+    CP -.约束与裁决.-> QE
+    CP -.约束与裁决.-> QL
+    CP -.约束与裁决.-> TP
+
+    OBS["Telemetry / Profiling / Transcript<br/>可观测性与持久化"] -.记录与恢复.-> QE
+    OBS -.记录与恢复.-> QL
+    OBS -.记录与恢复.-> TP
+```
+
+这一页讲什么：
+- Claude Code 不是自由聊天助手，而是一个 `terminal agent runtime`
+- 用户输入不会直接变成输出，而是经过 `prompt stack -> turn loop -> tool pipeline`
+- 使用技巧的作用，本质上是在影响这条链路的稳定性
+
+架构支撑：
+- `main.tsx` 负责整体 assembly
+- `QueryEngine.ts` 负责会话级 host
+- `query.ts` 负责 turn loop
+- `toolExecution.ts` 负责工具执行链
+- settings / auth / policy 构成 control plane
+
+源码依据：
+- [main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx)
+- [QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts)
+- [query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+- [toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+
 ## 1. 封面
 
 标题：
