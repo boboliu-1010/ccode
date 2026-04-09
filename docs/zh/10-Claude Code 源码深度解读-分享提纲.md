@@ -462,6 +462,13 @@ const filteredMessages =
   - 续航：transcript、recovery、compact、content replacement
   - 可观测性：query profiler、context analysis、prompt cache 诊断
 - 这些能力面比“按目录讲”更接近最终用户会感知到的系统能力。
+- 如果进一步按“用户能直接感知到什么”来拆，还可以把每类能力对应成更具体的问题：
+  - 交互：我怎么和 Claude Code 对话、切模式、拿结构化结果
+  - 执行：它能直接读什么、改什么、跑什么
+  - 扩展：它能接入哪些外部能力和上下文
+  - 控制：什么决定了它此刻能做什么、不能做什么
+  - 续航：长任务为什么不会一长就崩
+  - 可观测性：当结果变差、变慢、变贵时，怎么查原因
 
 **代码支撑**
 - [src/commands.ts](/Users/bobo/code/claude-code-source-code/src/commands.ts)
@@ -470,6 +477,22 @@ const filteredMessages =
 - [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
 
 **关键代码片段**
+
+```ts
+export function getAllBaseTools(): Tools {
+  return [
+    AgentTool,
+    TaskOutputTool,
+    BashTool,
+    ...(hasEmbeddedSearchTools() ? [] : [GlobTool, GrepTool]),
+    ExitPlanModeV2Tool,
+    FileReadTool,
+    FileEditTool,
+    FileWriteTool,
+    ...
+  ]
+}
+```
 
 ```ts
 return uniqBy(
@@ -505,6 +528,11 @@ return uniqBy(
   - plugins
   - prompt stack
   - settings / auth / permissions / policy
+- 如果按用户一天中的真实使用动作来理解，这些能力大致对应：
+  - 先通过 REPL / commands 进入任务
+  - 再用读写文件、Bash、任务系统推进执行
+  - 在复杂任务中通过 skills / MCP / plugins 扩展能力上限
+  - 在整个过程中持续受到 prompt、权限、策略和配置的约束
 
 **代码支撑**
 - [src/commands.ts](/Users/bobo/code/claude-code-source-code/src/commands.ts)
@@ -513,6 +541,27 @@ return uniqBy(
 - [src/utils/systemPrompt.ts](/Users/bobo/code/claude-code-source-code/src/utils/systemPrompt.ts)
 
 **关键代码片段**
+
+```ts
+const COMMANDS = memoize((): Command[] => [
+  addDir,
+  advisor,
+  clear,
+  compact,
+  config,
+  context,
+  diff,
+  help,
+  login,
+  mcp,
+  plan,
+  plugin,
+  resume,
+  review,
+  tasks,
+  ...
+])
+```
 
 ```ts
 case 'assistant':
@@ -549,6 +598,11 @@ case 'progress':
   - prompt cache 诊断
   - context analysis
 - 这些能力让系统不仅“能跑”，还能“长时间跑”和“知道自己哪里跑坏了”。
+- 从用户结果看，这部分能力直接对应：
+  - 长任务可以续做
+  - 中断后可以 resume
+  - 大输出不会直接把上下文拖爆
+  - 性能、上下文和缓存问题可以被定位，而不是只能猜
 
 **代码支撑**
 - [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
@@ -564,6 +618,16 @@ const filteredThinking =
   filterOrphanedThinkingOnlyMessages(filteredToolUses)
 const filteredMessages =
   filterWhitespaceOnlyAssistantMessages(filteredThinking)
+```
+
+```ts
+ * - query_context_loading_start/end
+ * - query_microcompact_start/end
+ * - query_autocompact_start/end
+ * - query_tool_schema_build_start/end
+ * - query_api_request_sent
+ * - query_first_chunk_received
+ * - query_tool_execution_start/end
 ```
 
 **代码理解支撑**
@@ -585,6 +649,15 @@ const filteredMessages =
 - 一部分内容可以 cache，一部分内容按会话动态拼接。
 
 **关键代码片段**
+
+```ts
+export function buildEffectiveSystemPrompt({
+  customSystemPrompt,
+  defaultSystemPrompt,
+  appendSystemPrompt,
+  overrideSystemPrompt,
+}: ...): SystemPrompt
+```
 
 ```ts
 The user will primarily request you to perform software engineering tasks.
@@ -622,6 +695,8 @@ The user will primarily request you to perform software engineering tasks.
 type State = {
   messages: Message[]
   toolUseContext: ToolUseContext
+  autoCompactTracking: AutoCompactTrackingState | undefined
+  maxOutputTokensRecoveryCount: number
   pendingToolUseSummary: Promise<ToolUseSummaryMessage | null> | undefined
   stopHookActive: boolean | undefined
   turnCount: number
@@ -665,6 +740,16 @@ runPreToolUseHooks(...)
 resolveHookPermissionDecision(...)
 ...
 tool.call(...)
+```
+
+```ts
+const TOOL_DEFAULTS = {
+  isConcurrencySafe: (_input?: unknown) => false,
+  isReadOnly: (_input?: unknown) => false,
+  isDestructive: (_input?: unknown) => false,
+  checkPermissions: (...) =>
+    Promise.resolve({ behavior: 'allow', updatedInput: input }),
+}
 ```
 
 ```ts
@@ -712,6 +797,15 @@ const filteredThinking =
 export type ContentReplacementState = {
   seenIds: Set<string>
   replacements: Map<string, string>
+}
+```
+
+```ts
+// Once seen, a result's fate is frozen for the conversation.
+export type ContentReplacementRecord = {
+  kind: 'tool-result'
+  toolUseId: string
+  replacement: string
 }
 ```
 
@@ -763,6 +857,16 @@ export function createSkillCommand({...}): Command {
 return [{ type: 'relevant_memories' as const, memories }]
 ```
 
+```ts
+function getCriticalSystemReminderAttachment(
+  toolUseContext: ToolUseContext,
+): Attachment[] {
+  const reminder = toolUseContext.criticalSystemReminder_EXPERIMENTAL
+  if (!reminder) return []
+  return [{ type: 'critical_system_reminder', content: reminder }]
+}
+```
+
 **代码支撑**
 - [src/utils/skills/loadSkillsDir.ts](/Users/bobo/code/claude-code-source-code/src/utils/skills/loadSkillsDir.ts)
 - [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
@@ -796,6 +900,17 @@ return [{ type: 'relevant_memories' as const, memories }]
 if (appState.toolPermissionContext.mode === 'auto') {
   ...
   classifierResult = await classifyYoloAction(...)
+}
+```
+
+```ts
+export function syncPermissionRulesFromDisk(
+  toolPermissionContext: ToolPermissionContext,
+  rules: PermissionRule[],
+): ToolPermissionContext {
+  ...
+  const updates = convertRulesToUpdates(rules, 'replaceRules')
+  return applyPermissionUpdates(context, updates)
 }
 ```
 
@@ -837,6 +952,11 @@ export function registerTask(task: TaskState, setAppState: SetAppState): void {
     task_id: task.id,
   })
 }
+```
+
+```ts
+ * Workers send permission requests to the leader's mailbox
+ * Leaders send permission responses to the worker's mailbox
 ```
 
 **代码支撑**

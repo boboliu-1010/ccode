@@ -436,6 +436,7 @@ def add_capability_slide(prs: Presentation, sd: SlideData):
     add_bg(slide)
     add_title(slide, sd.title, '先从用户感知的能力面理解，再进入主要功能。')
     thesis = parse_bullets(sd.fields.get('这一页要回答的问题', ''))
+    code = parse_code(sd.fields.get('关键代码片段', ''))
     if thesis:
         add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 0.62, 1.55, 12.02, 0.58, fill=PANEL_3, line=ACCENT)
         add_text(slide, 0.82, 1.72, 11.6, 0.22, thesis, size=14.5, bullet=False)
@@ -450,9 +451,17 @@ def add_capability_slide(prs: Presentation, sd: SlideData):
     for title, items, x, y, color in cards:
         add_panel(slide, x, y, 2.05, 1.6, title, title_color=color)
         add_text(slide, x+0.08, y+0.37, 1.9, 1.1, items, size=12.6)
+    if code:
+        add_code_box(slide, 6.35, 4.74, 6.25, 1.38, code, '关键源码片段')
+    else:
+        add_panel(slide, 6.35, 4.74, 6.25, 1.38, '功能面判断依据', title_color=ACCENT_2)
+        add_text(slide, 6.55, 5.12, 5.85, 0.78, [
+            'commands、tools、MCP、policy、recovery、profiling 虽然分散在不同模块里，',
+            '但它们共同服务的是一条主执行链，因此功能面比目录结构更适合作为用户理解入口。'
+        ], size=12.2, bullet=False)
     takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
-    add_panel(slide, 0.86, 6.15, 11.8, 0.65, '调研结论', title_color=ACCENT_3)
-    add_text(slide, 1.06, 6.42, 11.35, 0.2, takeaway or ['功能多本身不重要，关键是这些能力能围绕主执行链协同。'], size=14.2, bullet=False)
+    add_panel(slide, 0.86, 6.22, 11.8, 0.58, '调研结论', title_color=ACCENT_3)
+    add_text(slide, 1.06, 6.44, 11.35, 0.18, takeaway or ['功能多本身不重要，关键是这些能力能围绕主执行链协同。'], size=14.2, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', '功能介绍')
 
 
