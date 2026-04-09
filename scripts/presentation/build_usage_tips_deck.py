@@ -10,20 +10,21 @@ from pptx.util import Inches, Pt
 FONT = "Arial"
 MONO = "Courier New"
 
-TITLE = RGBColor(241, 245, 249)
-TEXT = RGBColor(226, 232, 240)
-MUTED = RGBColor(148, 163, 184)
-ACCENT = RGBColor(34, 211, 238)
-ACCENT_SOFT = RGBColor(15, 23, 42)
-BG = RGBColor(2, 6, 23)
+TITLE = RGBColor(244, 247, 255)
+TEXT = RGBColor(221, 230, 244)
+MUTED = RGBColor(137, 156, 190)
+ACCENT = RGBColor(56, 189, 248)
+ACCENT_2 = RGBColor(167, 139, 250)
+ACCENT_SOFT = RGBColor(12, 22, 46)
+BG = RGBColor(4, 10, 24)
 WHITE = RGBColor(255, 255, 255)
-LEAD = RGBColor(16, 24, 40)
-LINE = RGBColor(30, 41, 59)
-CODE_BG = RGBColor(3, 7, 18)
-PANEL_BG = RGBColor(10, 18, 36)
-PANEL_HDR = RGBColor(12, 30, 56)
-CODE_HDR = RGBColor(13, 20, 38)
-CODE_TEXT = RGBColor(196, 255, 236)
+LEAD = RGBColor(7, 12, 28)
+LINE = RGBColor(25, 40, 72)
+CODE_BG = RGBColor(6, 12, 28)
+PANEL_BG = RGBColor(9, 18, 38)
+PANEL_HDR = RGBColor(15, 31, 60)
+CODE_HDR = RGBColor(15, 24, 48)
+CODE_TEXT = RGBColor(197, 244, 255)
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 
@@ -212,6 +213,14 @@ def add_chip(slide, x, y, w, h, text, fill=ACCENT_SOFT, color=ACCENT):
     return shape
 
 
+def add_glow_bar(slide, x, y, w, h, color):
+    shape = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h))
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = color
+    shape.line.fill.background()
+    return shape
+
+
 def connect(slide, x1, y1, x2, y2):
     line = slide.shapes.add_connector(
         MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2)
@@ -225,6 +234,8 @@ def connect(slide, x1, y1, x2, y2):
 def add_lead(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, LEAD)
+    add_glow_bar(slide, 0.0, 0.0, 13.333, 0.06, ACCENT)
+    add_glow_bar(slide, 0.0, 7.44, 13.333, 0.06, ACCENT_2)
     add_title(
         slide,
         "Claude Code 使用技巧与注意事项",
@@ -243,7 +254,7 @@ def add_lead(prs):
             "2. 为什么有些提示方式更稳定",
             "3. 用户应该怎样提需求、控边界、做验证",
         ],
-        fill=RGBColor(12, 20, 38),
+        fill=RGBColor(10, 18, 36),
         line_color=ACCENT,
         size=17,
     )
@@ -259,15 +270,15 @@ def add_lead(prs):
             "先读代码，再做最小改动",
             "把源码里的默认工作方式转成用户提示词",
         ],
-        fill=RGBColor(12, 20, 38),
-        line_color=ACCENT,
+        fill=RGBColor(10, 18, 36),
+        line_color=ACCENT_2,
         size=17,
     )
-    add_chip(slide, 0.95, 4.65, 1.55, 0.38, "源码依据")
-    add_chip(slide, 2.65, 4.65, 1.8, 0.38, "架构视角")
-    add_chip(slide, 4.6, 4.65, 1.75, 0.38, "使用方法")
-    add_chip(slide, 6.55, 4.65, 1.95, 0.38, "提示词技巧")
-    add_chip(slide, 8.7, 4.65, 1.8, 0.38, "风险边界")
+    add_chip(slide, 0.95, 4.65, 1.55, 0.38, "源码依据", fill=ACCENT_SOFT, color=ACCENT)
+    add_chip(slide, 2.65, 4.65, 1.8, 0.38, "架构视角", fill=RGBColor(26, 19, 52), color=ACCENT_2)
+    add_chip(slide, 4.6, 4.65, 1.75, 0.38, "使用方法", fill=ACCENT_SOFT, color=ACCENT)
+    add_chip(slide, 6.55, 4.65, 1.95, 0.38, "提示词技巧", fill=RGBColor(26, 19, 52), color=ACCENT_2)
+    add_chip(slide, 8.7, 4.65, 1.8, 0.38, "风险边界", fill=ACCENT_SOFT, color=ACCENT)
     add_plain_box(
         slide,
         0.95,
@@ -277,8 +288,8 @@ def add_lead(prs):
         [
             "核心判断：Claude Code 不是自由聊天助手，而是一个围绕 Prompt Stack、Turn Loop 和 Tool Pipeline 运行的 terminal agent runtime。"
         ],
-        fill=RGBColor(9, 15, 30),
-        line_color=ACCENT,
+        fill=RGBColor(8, 15, 33),
+        line_color=ACCENT_2,
         size=15,
     )
 
