@@ -1,6 +1,6 @@
 # Claude Code 源码深度解读：分享提纲
 
-这份提纲面向 45-60 分钟正式分享。目标不是罗列模块，而是把 Claude Code 解释成一套可以长期工作的 `terminal agent runtime（终端代理运行时）`。
+这份提纲面向 55-70 分钟正式分享。目标不是罗列模块，而是把 Claude Code 解释成一套可以长期工作的 `terminal agent runtime（终端代理运行时）`。
 
 这份提纲的写法刻意偏“可直接写成 PPT 页内容”，因此每页都尽量包含：
 
@@ -748,9 +748,193 @@ type State = {
 
 ---
 
-# 第五部分：重要功能详细介绍（13 页）
+# 第五部分：用户视角的产出与技巧（6 页）
 
-## 第 34 页：Prompt Stack（提示词栈）
+## 第 34 页：从用户视角看，Claude Code 最典型的产出是什么
+
+**这一页要回答的问题**
+- 如果不从源码视角，而从实际使用视角看，Claude Code 最擅长产出什么。
+
+**核心内容**
+- Claude Code 的典型产出并不是“对话回答”，而是几类工程结果：
+  - 代码修改
+  - 代码解释与定位结论
+  - 调试与排障结论
+  - 命令执行与验证结果
+  - 计划、任务拆解、review 结论
+  - 结构化输出与工作卡
+
+**希望听众带走什么**
+- Claude Code 更适合被当作“工程产出生成器”，而不是聊天助手。
+
+**代码理解支撑**
+- 这不是从使用经验拍脑袋得出的。commands、Edit/Read/Bash、structured output、Plan Mode、task runtime 在代码里都明确存在，说明系统默认就围绕这些产出形态设计。
+
+## 第 35 页：为什么它能稳定地产出这些结果
+
+**这一页要回答的问题**
+- Claude Code 为什么能比较稳定地产出“工程结果”，而不是散漫回答。
+
+**核心内容**
+- 因为它的默认角色就是 `software engineering tasks（软件工程任务）`
+- 因为工具执行受 `tool pipeline` 约束
+- 因为结果会进入 transcript、compact、recovery 链
+- 因为 plan、task、memory 都在支持多阶段工作
+
+**代码支撑**
+- [src/constants/prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts)
+- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+- [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
+- [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
+
+**代码理解支撑**
+- 系统 prompt 把它定义成工程代理，tool pipeline 把动作放进执行链，transcript / recovery 把结果变成可持续状态，这三层共同决定了“它更容易产出工程结果”。
+
+**希望听众带走什么**
+- 产出稳定性来自运行时结构，不是单纯模型更强。
+
+## 第 36 页：技巧一：把任务写成“目标 + 范围 + 约束 + 验证”
+
+**这一页要回答的问题**
+- 从用户视角，最重要的一条使用技巧是什么。
+
+**核心内容**
+- 推荐把任务写成四段：
+  - 目标
+  - 范围
+  - 约束
+  - 验证
+- 这样能显著减少范围漂移、无关重构和“未验证就完成”的问题。
+
+**建议页面内容**
+- 左边放推荐模板
+- 右边放系统 prompt 中与之对应的规则
+
+**关键代码片段**
+
+```ts
+The user will primarily request you to perform software engineering tasks.
+```
+
+```ts
+Report outcomes faithfully...
+```
+
+**代码支撑**
+- [src/constants/prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts)
+
+**代码理解支撑**
+- 这条技巧有效，不是因为“写 prompt 有技巧”，而是因为它直接贴合了 system prompt 里的默认任务模型和结果汇报约束。
+
+**希望听众带走什么**
+- Claude Code 最吃“工程化输入”，不吃“模糊自由对话”。
+
+## 第 37 页：技巧二：先读代码，再改代码；最小改动，优先复用
+
+**这一页要回答的问题**
+- 为什么 Claude Code 经常会被建议“先读代码、别乱重构”。
+
+**核心内容**
+- 先点名关键文件，让它先读
+- 明确要求最小改动
+- 明确要求优先复用已有模式
+- 避免一上来就新建 helper / abstraction
+
+**关键代码片段**
+
+```ts
+In general, do not propose changes to code you haven't read.
+```
+
+```ts
+Don't create helpers, utilities, or abstractions for one-time operations.
+```
+
+**代码支撑**
+- [src/constants/prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts)
+- [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
+
+**代码理解支撑**
+- 这些规则直接写在 prompt 和 Plan workflow 里，说明 Claude Code 默认就是“先理解现有实现，再在现有结构上做最小修改”。
+
+**希望听众带走什么**
+- 这套系统天然偏向“沿现有结构推进”，而不是“顺手重构一大片”。
+
+## 第 38 页：技巧三：优先专用工具；高风险动作写清楚；验证要单独要求
+
+**这一页要回答的问题**
+- 哪些操作边界需要用户显式写出来。
+
+**核心内容**
+- 能用 dedicated tools 就不要默认 Bash
+- 高风险动作要显式确认
+- 验证要单独写出来，不能默认系统会替你做完
+
+**关键代码片段**
+
+```ts
+Do NOT use the Bash tool when a relevant dedicated tool is provided.
+```
+
+```ts
+Carefully consider the reversibility and blast radius of actions.
+```
+
+**代码支撑**
+- [src/constants/prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts)
+- [src/tools/BashTool/prompt.ts](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts)
+- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+
+**代码理解支撑**
+- Bash 并不是默认首选，高风险动作和验证结果也都被单独建模；这说明用户把这些边界写清楚，会显著减少系统误判。
+
+**希望听众带走什么**
+- Claude Code 很强，但边界写得越清楚，系统越稳。
+
+## 第 39 页：技巧四：什么时候适合 Plan Mode、并行、长任务推进
+
+**这一页要回答的问题**
+- Claude Code 在什么任务形态下最能发挥系统优势。
+
+**核心内容**
+- 需求不清时，先做 plan，不急着实现
+- 查询彼此独立时，允许并行
+- 长任务适合拆成多阶段、多执行体推进
+- Claude Code 很适合“持续工作流”，不只适合单轮问答
+
+**代码支撑**
+- [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
+- [src/utils/task/framework.ts](/Users/bobo/code/claude-code-source-code/src/utils/task/framework.ts)
+- [src/tools/AgentTool/runAgent.ts](/Users/bobo/code/claude-code-source-code/src/tools/AgentTool/runAgent.ts)
+
+**代码理解支撑**
+- Plan workflow、parallel tool calls、task runtime 和 subagent 机制都说明 Claude Code 不是只为“一问一答”设计，而是支持分阶段和持续推进。
+
+**希望听众带走什么**
+- 真正用好 Claude Code，不只是会提问，而是会组织任务节奏。
+
+## 第 40 页：用户视角小结：Claude Code 最适合怎样被使用
+
+**这一页要回答的问题**
+- 从用户使用角度，前面这些内容压成什么结论最有价值。
+
+**核心内容**
+- 把它当工程代理，不要当自由聊天助手
+- 输入越工程化，产出越稳定
+- 边界越清楚，系统越可控
+- 长任务、多阶段任务、需要验证的任务，最能体现它的优势
+
+**希望听众带走什么**
+- Claude Code 的“好用”不是玄学，而是与其源码默认工作方式高度一致。
+
+**代码理解支撑**
+- 这些结论分别可以回到 prompt stack、tool pipeline、task runtime、compact / recovery 上，因此是对代码行为的总结，而不是经验帖。
+
+---
+
+# 第六部分：重要功能详细介绍（13 页）
+
+## 第 41 页：Prompt Stack（提示词栈）
 
 **功能**
 - 定义系统默认行为与角色
@@ -774,7 +958,7 @@ The user will primarily request you to perform software engineering tasks.
 **代码理解支撑**
 - 默认 system prompt 直接把用户请求定义成软件工程任务，因此“工程化表达更稳”是系统默认角色推出来的，而不是经验心得。
 
-## 第 35 页：Turn Loop（轮次循环）
+## 第 42 页：Turn Loop（轮次循环）
 
 **功能**
 - 推进一轮轮 agent 执行
@@ -804,7 +988,7 @@ type State = {
 **代码理解支撑**
 - `State` 不只保存消息，还保存 transition、stop hook、tool summary 等跨轮状态，这正是状态机而不是线性调用器的特征。
 
-## 第 36 页：Tool Pipeline（工具执行流水线）
+## 第 43 页：Tool Pipeline（工具执行流水线）
 
 **功能**
 - 把工具能力放进可约束的执行链
@@ -833,7 +1017,7 @@ tool.call(...)
 **代码理解支撑**
 - 工具调用先经过 parse、hooks、permissions、classifier，再到真正执行，这表明“模型能否行动”是在 runtime 执行链里裁决的。
 
-## 第 37 页：BashTool
+## 第 44 页：BashTool
 
 **功能**
 - 提供最强但风险最高的执行能力
@@ -851,7 +1035,7 @@ tool.call(...)
 **代码理解支撑**
 - BashTool 周围专门拆出了路径校验、只读识别、sandbox 判断等模块，这说明安全和可逆性是设计重点，不是文档提醒。
 
-## 第 38 页：Compact（上下文压缩）
+## 第 45 页：Compact（上下文压缩）
 
 **功能**
 - 控制长会话上下文体积
@@ -869,7 +1053,7 @@ tool.call(...)
 **代码理解支撑**
 - compact 系列模块除了 summary 还保留 boundary、tail messages、attachments 等信息，说明它在保留“继续工作所需的表面”。
 
-## 第 39 页：Transcript / Recovery
+## 第 46 页：Transcript / Recovery
 
 **功能**
 - 保证会话可以恢复
@@ -895,7 +1079,7 @@ const filteredThinking =
 **代码理解支撑**
 - recovery 会主动修复 unresolved tool use、thinking、continuation 等问题，这种深度只能来自运行时语义，而不是前端展示层。
 
-## 第 40 页：Content Replacement（内容替换）
+## 第 47 页：Content Replacement（内容替换）
 
 **功能**
 - 控制大工具输出，不让上下文失控
@@ -922,7 +1106,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - replacement state 显式记录 `seenIds` 和 `replacements`，说明系统在维护“看过的前缀不能漂”这一层不变量。
 
-## 第 41 页：Skills（技能）
+## 第 48 页：Skills（技能）
 
 **功能**
 - 把提示词能力做成条件激活 artifact
@@ -940,7 +1124,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - skills 会被按路径、上下文和 compact 结果激活与保留，这说明它们是运行时能力对象，而不是静态提示词片段。
 
-## 第 42 页：Attachments（上下文附件）
+## 第 49 页：Attachments（上下文附件）
 
 **功能**
 - 动态组装当前轮上下文
@@ -957,7 +1141,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - attachments 会注入 memories、skill delta、task messages、system reminders，这证明 context 是逐轮拼出来的，不是原样聊天记录。
 
-## 第 43 页：Permissions / Hooks / Classifier
+## 第 50 页：Permissions / Hooks / Classifier
 
 **功能**
 - 决定模型能否继续代表用户行动
@@ -975,7 +1159,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - permissions、hooks、classifier 都位于工具执行链中，说明约束点是在 runtime 主路径上，而不是外侧人工兜底。
 
-## 第 44 页：Tasks / Subagents / Mailbox
+## 第 51 页：Tasks / Subagents / Mailbox
 
 **功能**
 - 把异步执行体变成一等对象
@@ -994,7 +1178,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - task registry、agent metadata、mailbox、sidechain transcript 同时存在，这已经是接近 actor model 的执行结构，而不是普通后台任务。
 
-## 第 45 页：MCP / Plugins / Remote Capability
+## 第 52 页：MCP / Plugins / Remote Capability
 
 **功能**
 - 把 Claude Code 扩展成能力枢纽
@@ -1012,7 +1196,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - MCP client、plugin loader、remote capability 各有接入点，说明能力上限来自系统可接入什么，而不只是模型本体多强。
 
-## 第 46 页：重要功能小结
+## 第 53 页：重要功能小结
 
 **这一页要回答的问题**
 - 为什么前面这些功能值得单独拆解。
@@ -1032,9 +1216,9 @@ export type ContentReplacementState = {
 
 ---
 
-# 第六部分：理解边界与借鉴点（6 页）
+# 第七部分：理解边界与借鉴点（6 页）
 
-## 第 47 页：如果要读这份代码，怎样建立理解顺序
+## 第 54 页：如果要读这份代码，怎样建立理解顺序
 
 **核心内容**
 - 先读 `main.tsx`
@@ -1054,7 +1238,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - 如果不先抓 `main.tsx`、`QueryEngine.ts`、`query.ts` 这条主链，后面的 compact、recovery、permissions 很容易被误读成局部补丁。
 
-## 第 48 页：如果要修改这份代码，哪些链路必须先确认
+## 第 55 页：如果要修改这份代码，哪些链路必须先确认
 
 **核心内容**
 - 先判断改动落在哪一层
@@ -1073,7 +1257,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - compact、recovery、replacement、cache 逻辑高度耦合，说明很多表面修改都会影响底层续航语义。
 
-## 第 49 页：从源码看，哪些设计最值得借鉴
+## 第 56 页：从源码看，哪些设计最值得借鉴
 
 **核心内容**
 - turn loop 的恢复图思路
@@ -1095,7 +1279,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - 值得借鉴的点横跨多个模块，说明本质是系统约束；而目录结构里已经混入大量历史演化和局部补偿。
 
-## 第 50 页：从源码看，哪些地方体现了明显结构债
+## 第 57 页：从源码看，哪些地方体现了明显结构债
 
 **核心内容**
 - `query.ts` 的 God Loop 倾向
@@ -1116,7 +1300,7 @@ export type ContentReplacementState = {
 **代码理解支撑**
 - `query.ts` 的集中化、`ToolUseContext` 的膨胀、attachments 与 continuity 逻辑的扩张，都是成熟系统典型的结构债表现。
 
-## 第 51 页：从代码演化角度看，更稳的方向是什么
+## 第 58 页：从代码演化角度看，更稳的方向是什么
 
 **核心内容**
 - 先建状态模型，再写实现
@@ -1138,7 +1322,7 @@ export type ContentReplacementState = {
 **希望听众带走什么**
 - 更稳的方向，不是再加功能，而是把已经存在的隐式约束显式化。
 
-## 第 52 页：总结页
+## 第 59 页：总结页
 
 **这一页要回答的问题**
 - 整场分享最后应该留下什么结论。
