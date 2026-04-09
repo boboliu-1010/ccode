@@ -212,7 +212,7 @@ def add_rich_slide(slide, title, subtitle, thesis, bullets, refs, insight, code_
         add_panel(slide, 7.82, 2.58, 4.8, 3.98, "实践含义", title_color=ACCENT_2)
         add_text_block(slide, 7.98, 2.96, 4.46, 3.5, [insight], size=17, color=TEXT, bullet=False)
     ref_text = "相关实现：" + " / ".join(refs[:4]) if refs else None
-    add_footer(slide, "Claude Code 源码深度解读", ref_text)
+    add_footer(slide, "Claude Code 源码调研", ref_text)
 
 
 def add_cover(prs):
@@ -222,8 +222,8 @@ def add_cover(prs):
     add_glow_bar(slide, 0, 7.44, 13.333, 0.06, ACCENT_2)
     add_title(
         slide,
-        "Claude Code：更好地使用它的源码解读",
-        "总体架构、工作流程、功能设计、使用技巧与协作建议",
+        "Claude Code 源码调研",
+        "总体架构、工作流程、功能设计、产出形态与开发流程建议",
     )
     add_thesis_box(slide, "这场分享的目标不是完整解释源码，而是利用源码理解，推出更有效的使用方式。")
     add_panel(slide, 0.72, 2.62, 5.68, 2.9, "这场分享关注什么")
@@ -266,7 +266,7 @@ def add_cover(prs):
         ],
         color=WARN,
     )
-    add_footer(slide, "Claude Code 源码深度解读")
+    add_footer(slide, "Claude Code 源码调研")
 
 
 def add_architecture_diagram_slide(prs):
@@ -337,7 +337,7 @@ def add_architecture_diagram_slide(prs):
     set_run_font(r, 15, TITLE, True)
     connect(slide, 5.78, 4.38, 5.78, 3.55, WARN)
     connect(slide, 8.3, 4.38, 8.3, 3.55, ACCENT)
-    add_footer(slide, "架构图回答：用户输入为什么不会直接等于模型输出。")
+    add_footer(slide, "架构图回答：用户输入为什么不会直接等于模型输出。", "Claude Code 源码调研")
 
 
 def add_workflow_diagram_slide(prs):
@@ -392,7 +392,7 @@ def add_workflow_diagram_slide(prs):
         ["这条流程由 main.tsx、QueryEngine.ts、query.ts 和 toolExecution.ts 共同定义；它天然是一条多轮执行链，而不是一次性问答。"],
         color=ACCENT_3,
     )
-    add_footer(slide, "工作流程图回答：为什么 Claude Code 更像“推进器”，而不是“聊天器”。")
+    add_footer(slide, "工作流程图回答：为什么 Claude Code 更像“推进器”，而不是“聊天器”。", "Claude Code 源码调研")
 
 
 def add_capability_map_slide(prs):
@@ -411,7 +411,7 @@ def add_capability_map_slide(prs):
     for title, lines, x, y, color in cards:
         add_panel(slide, x, y, 2.05, 1.85, title, title_color=color)
         add_text_block(slide, x + 0.1, y + 0.4, 1.85, 1.4, lines, size=12.5)
-    add_footer(slide, "功能列表的重点：它最适合产出什么结果，以及哪些能力会直接影响使用方式。")
+    add_footer(slide, "功能列表的重点：它有哪些能力面，以及哪些能力会直接影响使用方式。", "Claude Code 源码调研")
 
 
 def add_section_intro(prs, title, subtitle, bullets, tag):
@@ -421,7 +421,7 @@ def add_section_intro(prs, title, subtitle, bullets, tag):
     add_thesis_box(slide, tag)
     add_panel(slide, 0.85, 2.55, 11.6, 3.55, "本部分关注")
     add_text_block(slide, 1.08, 2.95, 11.1, 3.05, bullets, size=20)
-    add_footer(slide, "Claude Code 源码深度解读")
+    add_footer(slide, "Claude Code 源码调研")
 
 
 def build_deck():
@@ -463,17 +463,19 @@ def build_deck():
     add_architecture_diagram_slide(prs)
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
-        "Claude Code 和 demo agent 的本质差别",
-        "理解它为什么像生产系统，决定了后面讲什么才有价值。",
-        "demo agent 的中心是“模型调工具”；Claude Code 的中心是“让一条执行轨迹在复杂条件下仍可持续”。",
+        "整体架构中的主要模块",
+        "先看主模块，再看后面的工作流程、功能和产出。",
+        "Claude Code 最值得优先认识的模块，是启动装配、会话宿主、轮次推进、工具执行链、控制面，以及扩展与续航模块。",
         [
-            "它显式处理恢复、压缩、权限链、多执行体、观测与诊断。",
-            "它不是只追求“能跑一次”，而是追求“在长任务里还能继续跑”。",
-            "对话、工具、任务、扩展和控制面共同围绕同一条主执行链工作。",
-            "真正稀缺的价值，不是功能多少，而是已经为长期工作付过工程账。",
+            "启动装配：main.tsx。",
+            "会话宿主：QueryEngine.ts。",
+            "轮次推进：query.ts。",
+            "工具执行链：toolExecution.ts。",
+            "控制面：settings / auth / policy / prompt。",
+            "扩展与续航：skills / MCP / plugins / transcript / recovery / tasks。",
         ],
-        ["src/query.ts", "src/utils/conversationRecovery.ts", "src/services/tools/toolExecution.ts", "src/utils/task/framework.ts"],
-        "query.ts 的迁移分支、recovery、task framework 和 tool pipeline 一起说明它不属于 demo 形态。",
+        ["src/main.tsx", "src/QueryEngine.ts", "src/query.ts", "src/services/tools/toolExecution.ts"],
+        "这些模块共同定义了 Claude Code 的真实运行形态，也构成了后面工作流程、功能和使用技巧的代码基础。",
     )
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
@@ -641,16 +643,88 @@ def build_deck():
 
     add_section_intro(
         prs,
-        "第三部分：功能列表与产出",
-        "重点不在功能名本身，而在它们能产出什么工程结果。",
+        "第三部分：功能介绍",
+        "先讲功能分类，再讲主要功能。",
         [
-            "从用户视角，Claude Code 的价值应该用“产出形态”来衡量。",
-            "哪些任务适合它、哪些任务不适合它，都可以从运行时结构解释。",
-            "功能面和产出形态对应起来，后面的使用建议才不会空。",
+            "先看 Claude Code 的能力地图。",
+            "再看主要功能：每个功能讲它做什么、怎么实现、用户应该怎么用。",
+            "重点不是功能名称，而是功能对实际使用方式的影响。",
         ],
-        "功能列表只是索引，真正重要的是这些功能如何转化为稳定产出。",
+        "功能介绍部分的目标，是让听众知道 Claude Code 有哪些关键能力，以及每个能力为什么重要。",
     )
     add_capability_map_slide(prs)
+    add_rich_slide(
+        prs.slides.add_slide(prs.slide_layouts[6]),
+        "功能分类小结",
+        "先按能力面理解 Claude Code，而不是直接按目录平铺。",
+        "Claude Code 的功能可以压成六个能力面：交互、执行、扩展、控制、续航、可观测性。",
+        [
+            "交互：CLI / REPL、commands、Plan Mode、structured output。",
+            "执行：Read / Edit / Bash、tool pipeline、result processing。",
+            "扩展：skills、MCP、plugins、remote capability。",
+            "控制：settings、auth、policy、prompt stack。",
+            "续航：transcript、compact、recovery、task runtime。",
+            "可观测性：query profiler、cache break、analyze context。",
+        ],
+        ["src/commands.ts", "src/services/tools/toolExecution.ts", "src/services/mcp/client.ts", "src/utils/queryProfiler.ts"],
+        "这些功能面都能回到实际模块，不是随意分类；先有这张能力地图，后面再讲主要功能和使用方式才不会散。",
+    )
+
+    add_section_intro(
+        prs,
+        "第三部分续：主要功能介绍",
+        "讲实现原理的目的，是推出更有效的使用方式，而不是单独炫耀代码。",
+        [
+            "每个重点功能都会回答三件事：它是什么、它如何工作、用户应该如何顺着它来用。",
+            "所有使用技巧都必须能回到代码机制，而不是停在经验层面。",
+            "重点功能讲清以后，后面的流程建议才会足够稳。",
+        ],
+        "真正有价值的功能，不是功能名，而是它背后的运行时含义。",
+    )
+    detail_slides = [
+        ("Prompt Stack（提示词栈）", "默认角色如何被定义", "system prompt、agent prompt、dynamic sections 共同定义 Claude Code 的默认角色和行为边界。", ["default prompt 定义用户请求首先是 software engineering tasks。", "systemPrompt.ts 负责拼接 override、coordinator、agent 和 dynamic sections。", "prompt stack 决定了 Claude Code 更喜欢工程化表达，而不是闲聊式表达。", "因此任务越像工程任务，越能触发系统默认最佳状态。"], ["src/utils/systemPrompt.ts", "src/constants/prompts.ts"], "默认 system prompt 直接把用户请求定义成工程任务，所以“任务表达越工程化越稳”不是经验，而是系统角色设定的直接结果。", "源码提示词", "The user will primarily request you to perform software engineering tasks."),
+        ("QueryEngine（会话宿主）", "Claude Code 为什么像会话型系统", "QueryEngine 持有 mutableMessages、usage、file state 和 transcript 相关状态，因此它像 conversation host，而不是一次性 API wrapper。", ["它负责一整段会话怎么活，而不只是一次模型调用。", "它会在进入 query.ts 前先装配 processUserInput context。", "它也是 SDK / headless 输出的收口层。", "这说明 Claude Code 的核心不是“问一次”，而是“让一段会话持续存在”。"], ["src/QueryEngine.ts"], "持久化消息、usage 聚合和 transcript 预落盘都发生在 QueryEngine 这一层，因此它更像会话宿主。", "源码代码", "export class QueryEngine {\n  private mutableMessages: Message[]\n  private totalUsage: NonNullableUsage\n  private readFileState: FileStateCache\n}"),
+        ("Turn Loop（轮次循环）", "Claude Code 为什么擅长推进", "query.ts 保存的是跨轮迁移状态，不只是消息列表，因此它天然适合可继续推进的任务。", ["State 里不仅有 messages，还有 toolUseContext、pending summary、stopHookActive 和 transition。", "每一轮都会重新整理上下文、发起采样、执行工具并继续推进。", "它的强项不是一次性回答，而是围绕执行轨迹持续前进。", "因此大任务要拆阶段，小任务也要给清楚边界。"], ["src/query.ts"], "State 结构说明它维护的是 runtime 状态图，而不是静态消息数组。", "源码代码", "type State = {\n  messages: Message[]\n  toolUseContext: ToolUseContext\n  turnCount: number\n  transition: Continue | undefined\n}"),
+        ("Tool Pipeline（工具执行流水线）", "为什么工具调用不是直接执行", "schema parse -> validate -> hooks -> permissions -> call -> post process，这条链定义了 Claude Code 的真实自主边界。", ["执行不是直接 tool.call()，而是先被解析、审查和裁决。", "hooks 和 permissions 不是附属物，而是执行链的一部分。", "tool result 会被标准化并回灌到主轨迹。", "所以用户把边界写清楚，会直接帮助这条执行链更稳定。"], ["src/services/tools/toolExecution.ts"], "真正的“是否代表用户行动”发生在工具执行链内部，而不是在 UI 里口头提醒。", "源码代码", "const parsedInput = tool.inputSchema.safeParse(input)\n...\nrunPreToolUseHooks(...)\n...\nresolveHookPermissionDecision(...)\n...\ntool.call(...)"),
+        ("BashTool", "最强能力为什么也最需要边界", "BashTool 提供最强执行能力，但周围专门拆出了 sandbox、只读识别、路径校验和破坏性判断等安全层。", ["Bash 在系统里不是默认首选，而是高能力、高风险通道。", "它会单独处理路径合法性、只读命令和破坏性命令。", "长输出还会触发额外的结果治理。", "因此 Bash 更适合做兜底，而不是默认第一选择。"], ["src/tools/BashTool/BashTool.tsx", "src/tools/BashTool/prompt.ts"], "安全子模块的存在本身就说明 BashTool 被系统视为高风险能力，而不是普通执行路径。"),
+        ("Compact（上下文压缩）", "长会话为什么不会直接拖垮系统", "compact 保留的不只是 summary，还有 boundary、tail messages 和 attachments，因此它在重建工作面，而不是简单做摘要。", ["microcompact、autocompact 和 reactive compact 共同存在。", "compact 之后，系统仍然要保住必要的工作面信息。", "用户不能假设模型会永久持有所有历史细节。", "更稳的方式是要求阶段性产出，而不是指望全量记忆。"], ["src/services/compact/compact.ts", "src/services/compact/microCompact.ts"], "compact 的目标是重建可工作 context，而不是把历史压成一段漂亮摘要。"),
+        ("Transcript / Recovery（会话记录 / 恢复）", "为什么长任务和断点续做是它的强项", "recovery 会主动修 unresolved tool use、thinking、continuation 等状态，这种深度说明“继续工作”是底层能力。", ["transcript 保存的是可恢复消息链。", "recovery 会主动过滤和修补不合法状态。", "synthetic continuation 等机制直接服务于恢复。", "这使得 Claude Code 适合长任务和断点续做。"], ["src/utils/sessionStorage.ts", "src/utils/conversationRecovery.ts"], "如果 transcript 只是聊天记录，这些修补逻辑没有必要；正因为它是 runtime 状态载体，这些逻辑才成立。", "源码代码", "const filteredToolUses = filterUnresolvedToolUses(migratedMessages)\nconst filteredThinking =\n  filterOrphanedThinkingOnlyMessages(filteredToolUses)"),
+        ("Content Replacement（内容替换）", "大工具输出为什么不会直接把上下文拖垮", "系统用 ContentReplacementState 维护 seenIds 和 replacements，说明它在保护“看过的前缀不能漂”。", ["大结果会落盘，只把稳定 preview 留在上下文里。", "同一个 tool_use_id 的 replacement 一旦确定，后面不能随便变。", "resume 后还要重放 replacement。", "因此用户更应该关注结果和结论，而不是要求模型永远记住全部大输出。"], ["src/utils/toolResultStorage.ts", "src/services/compact/microCompact.ts"], "这层设计说明 Claude Code 把 prompt cache prefix stability 当成一等约束。", "源码代码", "export type ContentReplacementState = {\n  seenIds: Set<string>\n  replacements: Map<string, string>\n}"),
+        ("Skills（技能）", "为什么 skill 不是一段快捷短语", "skills 会按路径、上下文和 compact 结果激活与保留，因此它们更像 capability artifact，而不是静态 prompt 模板。", ["skills 不是简单的“快捷指令”。", "它们会参与能力面暴露和当前轮上下文构造。", "compact 后 invoked skills 仍会被保留。", "这意味着 skill 更适合有明显任务边界的场景。"], ["src/utils/skills/loadSkillsDir.ts", "src/utils/attachments.ts"], "只要一个能力对象会被按路径和上下文激活，它就已经不再只是文本模板。"),
+        ("Attachments（上下文附件）", "为什么 Claude Code 不是只看聊天记录", "attachments 逐轮注入 memories、skill delta、task messages 和 reminders，说明上下文是逐轮构造的工作面。", ["当前轮上下文来自聊天记录、prompt stack 和 attachments 的共同作用。", "attachments 负责把额外但关键的信息带回工作面。", "这也是 Claude Code 能维持复杂任务连续性的原因之一。", "因此用户组织任务的方式，会直接影响模型看到什么。"], ["src/utils/attachments.ts"], "如果把 Claude Code 当成只看消息历史的聊天机器人，就会误解很多行为。"),
+        ("Permissions / Hooks / Classifier", "真正的自主边界在哪里", "permissions、hooks 和 classifier 都位于工具执行链中，因此真正的自主边界在 runtime 内部，而不是外部口头约束。", ["allow / ask / deny 规则会在执行链里生效。", "pre/post hooks 可以在真正执行前后插入行为。", "classifier 会参与某些自动模式下的裁决。", "这解释了为什么模糊授权会显著放大不确定性。"], ["src/services/tools/toolExecution.ts", "src/utils/permissions/permissions.ts"], "系统内部对风险动作是单独建模的，因此用户也必须把确认规则显式写出来。"),
+        ("Tasks / Subagents / Mailbox", "为什么 Claude Code 适合持续推进而不只是一次性答复", "task registry、agent metadata、mailbox 和 sidechain transcript 同时存在，说明它已经有多执行体 runtime 的雏形。", ["复杂任务可以拆阶段、拆子任务，而不是硬塞成一次答复。", "task runtime 让异步执行体具备生命周期。", "subagent 和 mailbox 让协作语义开始形成。", "因此 Claude Code 更像工作推进器，而不是单轮聊天器。"], ["src/Task.ts", "src/utils/task/framework.ts", "src/tools/AgentTool/runAgent.ts"], "任务系统的存在，直接扩大了它适合承担的任务形态。"),
+        ("MCP / Plugins / Remote Capability", "Claude Code 的上限为什么不只取决于模型", "MCP、plugins 和 remote capability 各有接入点，说明扩展能力在系统里是一级设计目标。", ["Claude Code 的能力面可以通过 MCP 和插件持续扩展。", "这意味着“能不能接入合适工具”会直接影响它的上限。", "remote capability 进一步把它从本地代理推向能力枢纽。", "因此使用时要一起看模型能力和可接入能力面。"], ["src/services/mcp/client.ts", "src/utils/plugins/pluginLoader.ts"], "扩展能力不是附属物，而是系统原生设计目标；这解释了为什么 Claude Code 的价值常常来自“模型 + 工具面”。"),
+        ("Observability（可观测性）", "为什么它更像生产系统", "query profiler、cache break detection 和 analyzeContext 让系统不只会跑，还能解释自己为什么这样跑。", ["性能、上下文成本和缓存命中都不是黑盒。", "可观测性让团队能诊断慢在哪、贵在哪、坏在哪。", "这对于长任务和复杂工具链尤其重要。", "对使用者来说，意味着系统行为更可解释。"], ["src/utils/queryProfiler.ts", "src/services/api/promptCacheBreakDetection.ts", "src/utils/analyzeContext.ts"], "没有可观测性，就没有可演化的 harness；这也是它和 demo 代码的明显差别。"),
+    ]
+    for args in detail_slides:
+        add_rich_slide(prs.slides.add_slide(prs.slide_layouts[6]), *args)
+    add_rich_slide(
+        prs.slides.add_slide(prs.slide_layouts[6]),
+        "重要功能小结",
+        "真正的“使用技巧”，必须回到运行时机制上理解。",
+        "Prompt Stack、Turn Loop、Tool Pipeline、Compact、Recovery 和 Tasks 一起决定了系统如何继续工作，也决定了用户应该怎样更稳地使用它。",
+        [
+            "源码解释了为什么工程化表达更稳、为什么边界要写清、为什么长任务要分阶段。",
+            "真正的技巧不是“给它几句神奇提示词”，而是顺着 runtime 的工作方式组织任务。",
+            "功能细节讲得越清楚，后面的流程建议就越不容易空。",
+            "从这里开始，重点转向把机制翻译成协作方式。",
+        ],
+        ["src/constants/prompts.ts", "src/query.ts", "src/services/tools/toolExecution.ts", "src/utils/task/framework.ts"],
+        "所有高质量技巧的共同点，都是顺着运行时机制，而不是对抗它。",
+    )
+
+    add_section_intro(
+        prs,
+        "第四部分：产出",
+        "在讲完功能之后，再看用户最关心的：Claude Code 最典型的产出是什么，适合做什么任务。",
+        [
+            "这一部分回答的是“它能稳定产出什么结果”。",
+            "重点不是功能名，而是从用户视角看它最适合完成什么工程任务。",
+            "这些结论依然要有代码理解支撑。",
+        ],
+        "产出部分的目标，是把功能理解翻译成用户能直接感知的结果形态。",
+    )
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
         "从用户视角看，Claude Code 最典型的产出是什么",
@@ -712,61 +786,17 @@ def build_deck():
     )
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
-        "用户视角功能小结",
+        "产出小结",
         "先理解产出形态，再谈技巧，效果会更稳。",
         "Claude Code 最适合推进工程任务，特别适合产出“代码 + 解释 + 验证 + 计划”；它不适合完全模糊、完全无边界的自由发挥。",
         [
             "功能多本身不重要，关键是它们能否协同产出工程结果。",
             "适合的任务天然贴合它的主执行链。",
             "不适合的任务通常意味着边界不清、风险不明或工作面不可控。",
-            "下一部分开始逐个讲最重要的功能，以及这些功能对应的使用技巧。",
+            "下一部分开始把这些理解翻译成更直接的协作建议。",
         ],
         ["src/commands.ts", "src/services/tools/toolExecution.ts", "src/utils/messages.ts"],
-        "从这里往后，重点不再是“它有什么功能”，而是“这些功能为什么会导出某种更优的使用方式”。",
-    )
-
-    add_section_intro(
-        prs,
-        "第四部分：重要功能详细介绍",
-        "讲实现原理的目的，是推出更有效的使用方式，而不是单独炫耀代码。",
-        [
-            "每个重点功能都会回答三件事：它是什么、它如何工作、用户应该如何顺着它来用。",
-            "所有使用技巧都必须能回到代码机制，而不是停在经验层面。",
-            "重点功能讲清以后，后面的流程建议才会足够稳。",
-        ],
-        "真正有价值的功能，不是功能名，而是它背后的运行时含义。",
-    )
-    detail_slides = [
-        ("Prompt Stack（提示词栈）", "默认角色如何被定义", "system prompt、agent prompt、dynamic sections 共同定义 Claude Code 的默认角色和行为边界。", ["default prompt 定义用户请求首先是 software engineering tasks。", "systemPrompt.ts 负责拼接 override、coordinator、agent 和 dynamic sections。", "prompt stack 决定了 Claude Code 更喜欢工程化表达，而不是闲聊式表达。", "因此任务越像工程任务，越能触发系统默认最佳状态。"], ["src/utils/systemPrompt.ts", "src/constants/prompts.ts"], "默认 system prompt 直接把用户请求定义成工程任务，所以“任务表达越工程化越稳”不是经验，而是系统角色设定的直接结果。", "源码提示词", "The user will primarily request you to perform software engineering tasks."),
-        ("QueryEngine（会话宿主）", "Claude Code 为什么像会话型系统", "QueryEngine 持有 mutableMessages、usage、file state 和 transcript 相关状态，因此它像 conversation host，而不是一次性 API wrapper。", ["它负责一整段会话怎么活，而不只是一次模型调用。", "它会在进入 query.ts 前先装配 processUserInput context。", "它也是 SDK / headless 输出的收口层。", "这说明 Claude Code 的核心不是“问一次”，而是“让一段会话持续存在”。"], ["src/QueryEngine.ts"], "持久化消息、usage 聚合和 transcript 预落盘都发生在 QueryEngine 这一层，因此它更像会话宿主。", "源码代码", "export class QueryEngine {\n  private mutableMessages: Message[]\n  private totalUsage: NonNullableUsage\n  private readFileState: FileStateCache\n}"),
-        ("Turn Loop（轮次循环）", "Claude Code 为什么擅长推进", "query.ts 保存的是跨轮迁移状态，不只是消息列表，因此它天然适合可继续推进的任务。", ["State 里不仅有 messages，还有 toolUseContext、pending summary、stopHookActive 和 transition。", "每一轮都会重新整理上下文、发起采样、执行工具并继续推进。", "它的强项不是一次性回答，而是围绕执行轨迹持续前进。", "因此大任务要拆阶段，小任务也要给清楚边界。"], ["src/query.ts"], "State 结构说明它维护的是 runtime 状态图，而不是静态消息数组。", "源码代码", "type State = {\n  messages: Message[]\n  toolUseContext: ToolUseContext\n  turnCount: number\n  transition: Continue | undefined\n}"),
-        ("Tool Pipeline（工具执行流水线）", "为什么工具调用不是直接执行", "schema parse -> validate -> hooks -> permissions -> call -> post process，这条链定义了 Claude Code 的真实自主边界。", ["执行不是直接 tool.call()，而是先被解析、审查和裁决。", "hooks 和 permissions 不是附属物，而是执行链的一部分。", "tool result 会被标准化并回灌到主轨迹。", "所以用户把边界写清楚，会直接帮助这条执行链更稳定。"], ["src/services/tools/toolExecution.ts"], "真正的“是否代表用户行动”发生在工具执行链内部，而不是在 UI 里口头提醒。", "源码代码", "const parsedInput = tool.inputSchema.safeParse(input)\n...\nrunPreToolUseHooks(...)\n...\nresolveHookPermissionDecision(...)\n...\ntool.call(...)"),
-        ("BashTool", "最强能力为什么也最需要边界", "BashTool 提供最强执行能力，但周围专门拆出了 sandbox、只读识别、路径校验和破坏性判断等安全层。", ["Bash 在系统里不是默认首选，而是高能力、高风险通道。", "它会单独处理路径合法性、只读命令和破坏性命令。", "长输出还会触发额外的结果治理。", "因此 Bash 更适合做兜底，而不是默认第一选择。"], ["src/tools/BashTool/BashTool.tsx", "src/tools/BashTool/prompt.ts"], "安全子模块的存在本身就说明 BashTool 被系统视为高风险能力，而不是普通执行路径。"),
-        ("Compact（上下文压缩）", "长会话为什么不会直接拖垮系统", "compact 保留的不只是 summary，还有 boundary、tail messages 和 attachments，因此它在重建工作面，而不是简单做摘要。", ["microcompact、autocompact 和 reactive compact 共同存在。", "compact 之后，系统仍然要保住必要的工作面信息。", "用户不能假设模型会永久持有所有历史细节。", "更稳的方式是要求阶段性产出，而不是指望全量记忆。"], ["src/services/compact/compact.ts", "src/services/compact/microCompact.ts"], "compact 的目标是重建可工作 context，而不是把历史压成一段漂亮摘要。"),
-        ("Transcript / Recovery（会话记录 / 恢复）", "为什么长任务和断点续做是它的强项", "recovery 会主动修 unresolved tool use、thinking、continuation 等状态，这种深度说明“继续工作”是底层能力。", ["transcript 保存的是可恢复消息链。", "recovery 会主动过滤和修补不合法状态。", "synthetic continuation 等机制直接服务于恢复。", "这使得 Claude Code 适合长任务和断点续做。"], ["src/utils/sessionStorage.ts", "src/utils/conversationRecovery.ts"], "如果 transcript 只是聊天记录，这些修补逻辑没有必要；正因为它是 runtime 状态载体，这些逻辑才成立。", "源码代码", "const filteredToolUses = filterUnresolvedToolUses(migratedMessages)\nconst filteredThinking =\n  filterOrphanedThinkingOnlyMessages(filteredToolUses)"),
-        ("Content Replacement（内容替换）", "大工具输出为什么不会直接把上下文拖垮", "系统用 ContentReplacementState 维护 seenIds 和 replacements，说明它在保护“看过的前缀不能漂”。", ["大结果会落盘，只把稳定 preview 留在上下文里。", "同一个 tool_use_id 的 replacement 一旦确定，后面不能随便变。", "resume 后还要重放 replacement。", "因此用户更应该关注结果和结论，而不是要求模型永远记住全部大输出。"], ["src/utils/toolResultStorage.ts", "src/services/compact/microCompact.ts"], "这层设计说明 Claude Code 把 prompt cache prefix stability 当成一等约束。", "源码代码", "export type ContentReplacementState = {\n  seenIds: Set<string>\n  replacements: Map<string, string>\n}"),
-        ("Skills（技能）", "为什么 skill 不是一段快捷短语", "skills 会按路径、上下文和 compact 结果激活与保留，因此它们更像 capability artifact，而不是静态 prompt 模板。", ["skills 不是简单的“快捷指令”。", "它们会参与能力面暴露和当前轮上下文构造。", "compact 后 invoked skills 仍会被保留。", "这意味着 skill 更适合有明显任务边界的场景。"], ["src/utils/skills/loadSkillsDir.ts", "src/utils/attachments.ts"], "只要一个能力对象会被按路径和上下文激活，它就已经不再只是文本模板。"),
-        ("Attachments（上下文附件）", "为什么 Claude Code 不是只看聊天记录", "attachments 逐轮注入 memories、skill delta、task messages 和 reminders，说明上下文是逐轮构造的工作面。", ["当前轮上下文来自聊天记录、prompt stack 和 attachments 的共同作用。", "attachments 负责把额外但关键的信息带回工作面。", "这也是 Claude Code 能维持复杂任务连续性的原因之一。", "因此用户组织任务的方式，会直接影响模型看到什么。"], ["src/utils/attachments.ts"], "如果把 Claude Code 当成只看消息历史的聊天机器人，就会误解很多行为。"),
-        ("Permissions / Hooks / Classifier", "真正的自主边界在哪里", "permissions、hooks 和 classifier 都位于工具执行链中，因此真正的自主边界在 runtime 内部，而不是外部口头约束。", ["allow / ask / deny 规则会在执行链里生效。", "pre/post hooks 可以在真正执行前后插入行为。", "classifier 会参与某些自动模式下的裁决。", "这解释了为什么模糊授权会显著放大不确定性。"], ["src/services/tools/toolExecution.ts", "src/utils/permissions/permissions.ts"], "系统内部对风险动作是单独建模的，因此用户也必须把确认规则显式写出来。"),
-        ("Tasks / Subagents / Mailbox", "为什么 Claude Code 适合持续推进而不只是一次性答复", "task registry、agent metadata、mailbox 和 sidechain transcript 同时存在，说明它已经有多执行体 runtime 的雏形。", ["复杂任务可以拆阶段、拆子任务，而不是硬塞成一次答复。", "task runtime 让异步执行体具备生命周期。", "subagent 和 mailbox 让协作语义开始形成。", "因此 Claude Code 更像工作推进器，而不是单轮聊天器。"], ["src/Task.ts", "src/utils/task/framework.ts", "src/tools/AgentTool/runAgent.ts"], "任务系统的存在，直接扩大了它适合承担的任务形态。"),
-        ("MCP / Plugins / Remote Capability", "Claude Code 的上限为什么不只取决于模型", "MCP、plugins 和 remote capability 各有接入点，说明扩展能力在系统里是一级设计目标。", ["Claude Code 的能力面可以通过 MCP 和插件持续扩展。", "这意味着“能不能接入合适工具”会直接影响它的上限。", "remote capability 进一步把它从本地代理推向能力枢纽。", "因此使用时要一起看模型能力和可接入能力面。"], ["src/services/mcp/client.ts", "src/utils/plugins/pluginLoader.ts"], "扩展能力不是附属物，而是系统原生设计目标；这解释了为什么 Claude Code 的价值常常来自“模型 + 工具面”。"),
-        ("Observability（可观测性）", "为什么它更像生产系统", "query profiler、cache break detection 和 analyzeContext 让系统不只会跑，还能解释自己为什么这样跑。", ["性能、上下文成本和缓存命中都不是黑盒。", "可观测性让团队能诊断慢在哪、贵在哪、坏在哪。", "这对于长任务和复杂工具链尤其重要。", "对使用者来说，意味着系统行为更可解释。"], ["src/utils/queryProfiler.ts", "src/services/api/promptCacheBreakDetection.ts", "src/utils/analyzeContext.ts"], "没有可观测性，就没有可演化的 harness；这也是它和 demo 代码的明显差别。"),
-    ]
-    for args in detail_slides:
-        add_rich_slide(prs.slides.add_slide(prs.slide_layouts[6]), *args)
-    add_rich_slide(
-        prs.slides.add_slide(prs.slide_layouts[6]),
-        "重要功能小结",
-        "真正的“使用技巧”，必须回到运行时机制上理解。",
-        "Prompt Stack、Turn Loop、Tool Pipeline、Compact、Recovery 和 Tasks 一起决定了系统如何继续工作，也决定了用户应该怎样更稳地使用它。",
-        [
-            "源码解释了为什么工程化表达更稳、为什么边界要写清、为什么长任务要分阶段。",
-            "真正的技巧不是“给它几句神奇提示词”，而是顺着 runtime 的工作方式组织任务。",
-            "功能细节讲得越清楚，后面的流程建议就越不容易空。",
-            "从这里开始，重点转向把机制翻译成协作方式。",
-        ],
-        ["src/constants/prompts.ts", "src/query.ts", "src/services/tools/toolExecution.ts", "src/utils/task/framework.ts"],
-        "所有高质量技巧的共同点，都是顺着运行时机制，而不是对抗它。",
+        "从用户视角看，真正重要的不是它“有什么功能”，而是它最擅长产出什么结果。",
     )
 
     add_section_intro(
@@ -797,6 +827,67 @@ def build_deck():
     ]
     for args in advice_slides:
         add_rich_slide(prs.slides.add_slide(prs.slide_layouts[6]), *args)
+
+    add_section_intro(
+        prs,
+        "第六部分：代码走读概略",
+        "这部分不再深挖代码，而是给出后续自主走读的最小入口。",
+        [
+            "前面已经用足够多的源码理解建立了模型。",
+            "最后只需要给出代码组织、主要模块和建议阅读路径。",
+            "这样听众后续要自己读代码时，能更快建立结构感。",
+        ],
+        "代码走读概略的目标，是给出一条高效阅读路径，而不是再讲一遍实现细节。",
+    )
+    add_rich_slide(
+        prs.slides.add_slide(prs.slide_layouts[6]),
+        "代码组织和架构概略",
+        "如果后续要自己读代码，第一步不是深挖函数，而是先建立分层视图。",
+        "Claude Code 的代码组织可以先压成：启动与装配、会话与执行、工具与命令、续航与恢复、扩展与控制。",
+        [
+            "启动与装配：main.tsx。",
+            "会话与执行：QueryEngine.ts、query.ts。",
+            "工具与命令：Tool.ts、tools.ts、commands.ts。",
+            "续航与恢复：sessionStorage.ts、conversationRecovery.ts、compact/*。",
+            "扩展与控制：settings、auth、policy、MCP、plugins、skills。",
+        ],
+        ["src/main.tsx", "src/QueryEngine.ts", "src/query.ts", "src/commands.ts"],
+        "先看代码分层，再看实现细节，效率会高很多；直接按目录平铺读，容易失去主线。",
+    )
+    add_rich_slide(
+        prs.slides.add_slide(prs.slide_layouts[6]),
+        "建议的代码走读顺序",
+        "如果只给一条阅读路径，应该按运行链和控制链来读，而不是按目录字母顺序。",
+        "最自然的走读顺序是：装配 -> 宿主 -> 执行 -> 工具链 -> 续航 -> 扩展。",
+        [
+            "先看 main.tsx，建立装配视角。",
+            "再看 QueryEngine.ts，理解会话宿主。",
+            "然后看 query.ts，理解 turn loop。",
+            "再看 toolExecution.ts，理解工具执行边界。",
+            "之后看 compact / recovery，理解长任务续航。",
+            "最后看 commands / tools / MCP / tasks，理解能力面和扩展。",
+        ],
+        ["src/main.tsx", "src/QueryEngine.ts", "src/query.ts", "src/services/tools/toolExecution.ts"],
+        "这条顺序从运行链逐步展开，最容易把零散代码读成一个完整系统。",
+    )
+    add_rich_slide(
+        prs.slides.add_slide(prs.slide_layouts[6]),
+        "主要模块与重点文件",
+        "如果只能记住一组文件，最好记住真正定义系统行为的那一批。",
+        "足以支撑一次高质量源码走读的重点文件，应该优先覆盖装配、宿主、执行、工具、压缩和恢复。",
+        [
+            "main.tsx",
+            "QueryEngine.ts",
+            "query.ts",
+            "toolExecution.ts",
+            "BashTool.tsx",
+            "compact.ts / microCompact.ts",
+            "sessionStorage.ts / conversationRecovery.ts",
+            "messages.ts",
+        ],
+        ["src/main.tsx", "src/QueryEngine.ts", "src/query.ts", "src/utils/messages.ts"],
+        "记住这组文件，后续无论是继续做代码走读，还是回看这场分享，都有足够的抓手。",
+    )
 
     prs.save(OUT)
     print(f"saved {OUT}")
