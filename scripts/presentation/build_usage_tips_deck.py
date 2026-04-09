@@ -288,11 +288,18 @@ def add_overview(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, "UML 总览图：Claude Code 的主执行链", "terminal agent runtime（终端代理运行时）视角")
-    add_image(slide, SCRIPT_DIR / "usage-overview.png", 0.9, 1.65, 11.5, 4.55)
+    add_image(slide, SCRIPT_DIR / "usage-overview.png", 0.22, 1.18, 12.9, 5.9)
 
-    add_note(
+    add_plain_box(
         slide,
-        "这张图的重点是：用户输入会沿着 prompt stack（提示词栈）→ turn loop（轮次循环）→ tool pipeline（工具执行流水线）这条主链向下传递。",
+        0.35,
+        6.45,
+        12.6,
+        0.4,
+        ["重点：用户输入会沿着 prompt stack（提示词栈）→ turn loop（轮次循环）→ tool pipeline（工具执行流水线）这条主链向下传递。"],
+        fill=ACCENT_SOFT,
+        line_color=ACCENT,
+        size=12,
     )
 
 
@@ -301,18 +308,18 @@ def add_sequence_slide(prs):
     add_bg(slide, BG)
     add_title(slide, "时序图：一次请求如何流过 Claude Code", "用一条 request → tool → result 链解释用户提示词为什么有效")
 
-    add_image(slide, SCRIPT_DIR / "usage-sequence.png", 0.95, 1.7, 11.4, 4.65)
+    add_image(slide, SCRIPT_DIR / "usage-sequence.png", 0.22, 1.18, 12.9, 5.9)
 
     add_plain_box(
         slide,
-        1.2,
-        6.18,
-        11.0,
-        0.56,
+        0.35,
+        6.45,
+        12.6,
+        0.4,
         ["结论：目标、范围、约束、验证写得越清楚，越能稳定影响 prompt stack、turn loop 和 tool pipeline 的每一步。"],
         fill=ACCENT_SOFT,
         line_color=ACCENT,
-        size=14,
+        size=12,
     )
 
 

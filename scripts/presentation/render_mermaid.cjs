@@ -40,9 +40,9 @@ async function render(inputFile, outputFile) {
   </script>
 </head>
 <body>
-  <div id="wrap">
-    <pre class="mermaid">${source.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
-  </div>
+    <div id="wrap">
+      <pre class="mermaid">${source.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+    </div>
 </body>
 </html>`;
 
@@ -50,7 +50,7 @@ async function render(inputFile, outputFile) {
   fs.writeFileSync(htmlPath, html, "utf8");
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 2 });
+  const page = await browser.newPage({ viewport: { width: 2200, height: 1240 }, deviceScaleFactor: 2 });
   await page.goto(`file://${htmlPath}`, { waitUntil: "networkidle" });
   await page.locator("#wrap").screenshot({ path: outputFile });
   await browser.close();
