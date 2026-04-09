@@ -46,6 +46,11 @@
 - [QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts)
 - [query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
 
+关键代码点：
+- `main.tsx` 负责 settings / auth / tools / plugins / MCP 的 assembly
+- `QueryEngine.ts` 持有 messages、usage、file state、transcript
+- `query.ts` 负责 `model -> tool -> model` 的 turn loop
+
 ## 4. 从源码反推：默认偏好的工作方式
 
 核心信息：
@@ -66,6 +71,13 @@
 - [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
 - [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)
 
+关键代码点：
+- `do not propose changes to code you haven't read`
+- `Don't create helpers ... for one-time operations`
+- `Do NOT use the Bash tool ... when a relevant dedicated tool is provided`
+- `Report outcomes faithfully`
+- `ask for confirmation before proceeding`
+
 ## 5. 技巧 1：任务写成“目标 + 范围 + 约束 + 验证”
 
 推荐写法：
@@ -85,6 +97,11 @@
 - [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
 - [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
 
+关键代码点：
+- `software engineering tasks`
+- `do not propose changes to code you haven't read`
+- `Report outcomes faithfully`
+
 ## 6. 技巧 2：明确要求先读代码，再改代码
 
 推荐写法：
@@ -101,6 +118,11 @@
 - [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
 - [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)
 
+关键代码点：
+- `read it first`
+- `Explore — Use ... to read code`
+- `Look for existing functions, utilities, and patterns to reuse`
+
 ## 7. 技巧 3：强调最小改动、优先复用
 
 推荐写法：
@@ -115,6 +137,10 @@
 源码依据：
 - [prompts.ts#L200](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L200)
 - [prompts.ts#L203](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L203)
+
+关键代码点：
+- `Don't add features, refactor code, or make "improvements" beyond what was asked`
+- `Don't create helpers, utilities, or abstractions for one-time operations`
 
 ## 8. 技巧 4：优先 dedicated tools，不要默认 Bash
 
@@ -133,6 +159,11 @@
 - [prompts.ts#L305](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L305)
 - [BashTool prompt#L297](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L297)
 
+关键代码点：
+- `default to using the dedicated tool`
+- `Do NOT use the Bash tool ...`
+- `If the commands are independent and can run in parallel`
+
 ## 9. 技巧 5：验证要求要写清楚，而且要如实汇报
 
 推荐写法：
@@ -148,6 +179,10 @@
 - [prompts.ts#L211](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L211)
 - [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
 
+关键代码点：
+- `verify it actually works`
+- `Never claim "all tests pass" when output shows failures`
+
 ## 10. 技巧 6：高风险动作要显式要求先确认
 
 推荐写法：
@@ -162,6 +197,11 @@
 源码依据：
 - [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)
 - [BashTool prompt#L304](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L304)
+
+关键代码点：
+- `reversibility and blast radius`
+- `ask for confirmation before proceeding`
+- `Only use destructive operations when they are truly the best approach`
 
 ## 11. 技巧 7：独立查询可以显式允许 parallel
 
@@ -179,6 +219,11 @@
 - [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)
 - [BashTool prompt#L298](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L298)
 
+关键代码点：
+- `make all independent tool calls in parallel`
+- `parallelize complex searches`
+- `If the commands are independent and can run in parallel`
+
 ## 12. 常见误区与注意事项
 
 核心信息：
@@ -192,6 +237,12 @@
 - [prompts.ts#L200](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L200)
 - [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
 - [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)
+
+关键代码点：
+- `software engineering tasks`
+- `Don't add features ... beyond what was asked`
+- `Report outcomes faithfully`
+- `ask for confirmation before proceeding`
 
 ## 13. 最小使用清单
 
