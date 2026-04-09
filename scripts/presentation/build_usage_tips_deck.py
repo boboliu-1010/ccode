@@ -228,25 +228,59 @@ def add_lead(prs):
     add_title(
         slide,
         "Claude Code 使用技巧与注意事项",
-        "使用建议与源码依据",
+        "从源码反推：怎样用得更稳、更准、更像专业工程协作",
         lead=True,
     )
-    add_bullets(
+    add_plain_box(
         slide,
-        [
-            "先说明 Claude Code 从工程上是什么，再解释怎样用会更稳",
-            "每条技巧都附架构支撑、源码依据和关键代码片段",
-        ],
         0.9,
-        2.05,
-        11.4,
-        1.8,
-        size=18,
-        color=WHITE,
+        2.0,
+        5.45,
+        2.25,
+        [
+            "这份分享回答三个问题：",
+            "1. Claude Code 从工程上到底是什么",
+            "2. 为什么有些提示方式更稳定",
+            "3. 用户应该怎样提需求、控边界、做验证",
+        ],
+        fill=RGBColor(12, 20, 38),
+        line_color=ACCENT,
+        size=17,
     )
-    add_chip(slide, 0.95, 4.2, 1.55, 0.38, "源码依据")
-    add_chip(slide, 2.65, 4.2, 1.8, 0.38, "架构视角")
-    add_chip(slide, 4.6, 4.2, 1.75, 0.38, "使用方法")
+    add_plain_box(
+        slide,
+        6.75,
+        2.0,
+        5.55,
+        2.25,
+        [
+            "最终目标不是讲功能，而是形成一套可复用的使用方法：",
+            "目标 + 范围 + 约束 + 验证",
+            "先读代码，再做最小改动",
+            "把源码里的默认工作方式转成用户提示词",
+        ],
+        fill=RGBColor(12, 20, 38),
+        line_color=ACCENT,
+        size=17,
+    )
+    add_chip(slide, 0.95, 4.65, 1.55, 0.38, "源码依据")
+    add_chip(slide, 2.65, 4.65, 1.8, 0.38, "架构视角")
+    add_chip(slide, 4.6, 4.65, 1.75, 0.38, "使用方法")
+    add_chip(slide, 6.55, 4.65, 1.95, 0.38, "提示词技巧")
+    add_chip(slide, 8.7, 4.65, 1.8, 0.38, "风险边界")
+    add_plain_box(
+        slide,
+        0.95,
+        5.35,
+        11.35,
+        0.78,
+        [
+            "核心判断：Claude Code 不是自由聊天助手，而是一个围绕 Prompt Stack、Turn Loop 和 Tool Pipeline 运行的 terminal agent runtime。"
+        ],
+        fill=RGBColor(9, 15, 30),
+        line_color=ACCENT,
+        size=15,
+    )
 
 
 def add_architecture_slide(prs):
