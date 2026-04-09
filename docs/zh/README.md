@@ -13,6 +13,10 @@
 - [07-走读附录：配置、认证与扩展系统.md](/Users/bobo/code/claude-code-source-code/docs/zh/07-走读附录：配置、认证与扩展系统.md)
 - [08-走读附录：Claude Code 使用技巧.md](/Users/bobo/code/claude-code-source-code/docs/zh/08-走读附录：Claude Code 使用技巧.md)
 
+## 用户视角
+
+- [09-Claude Code 使用技巧与注意事项.md](/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude%20Code%20使用技巧与注意事项.md)
+
 ## 专题
 
 - [01-遥测与隐私分析.md](/Users/bobo/code/claude-code-source-code/docs/zh/01-遥测与隐私分析.md)

@@ -1,17 +1,63 @@
 # Claude Code 使用技巧与注意事项
 
-这份文档从使用者视角总结 Claude Code 的实用技巧。目标不是讲架构，而是回答两个问题：
+这份文档从源码角度总结 Claude Code 的用户侧使用技巧。目标不是重复功能列表，而是回答三个问题：
 
-1. 平时怎样提需求，Claude Code 更容易表现稳定
-2. 这些技巧为什么成立，源码里有什么依据
+1. Claude Code 从工程实现上到底是什么
+2. 它默认偏好的工作方式是什么
+3. 作为使用者，怎样提需求和控制行为会更稳定
 
 相关源码主要来自：
 
 - [src/constants/prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts)
 - [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
 - [src/tools/BashTool/prompt.ts](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts)
+- [src/main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx)
+- [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+- [src/QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts)
 
-## 1. 任务要写成“目标 + 范围 + 约束 + 验证”
+## 1. 先看源码：Claude Code 到底是什么
+
+如果只从使用者角度看，Claude Code 很像“能改代码的命令行助手”。  
+但从源码看，它更准确的定位是一个 **terminal agent runtime（终端代理运行时）**，而不是简单的聊天壳。
+
+它至少同时包含几层：
+
+- **bootstrap / assembly（启动装配）**  
+  由 [main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx) 负责，把 settings、auth、policy、plugins、skills、MCP、tools 装起来。
+- **conversation host（会话宿主）**  
+  由 [QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts) 负责，管理多轮消息、usage、file state、transcript。
+- **turn loop（轮次循环） / runtime kernel（运行时内核）**  
+  由 [query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts) 负责，真正推进一轮轮 `model -> tool -> model` 闭环。
+- **tool pipeline（工具执行流水线）**  
+  负责 schema、hooks、permissions、classifier、`tool.call()`、result processing。
+- **control plane（控制面）**  
+  包括 settings、auth、prompt stack、policy、managed settings。
+
+这直接决定了一个很重要的使用结论：
+
+> Claude Code 默认不是把你的输入当“闲聊”，而是当“软件工程任务”。
+
+## 2. 从源码反推：Claude Code 默认偏好的工作方式
+
+从 [prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts) 和 [messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts) 看，Claude Code 有几条非常稳定的默认偏好：
+
+- 把用户请求理解成 **software engineering task（软件工程任务）**
+- 偏好 **先读代码，再改代码**
+- 偏好 **最小必要改动**
+- 偏好 **复用已有实现**
+- 偏好 **dedicated tools（专用工具）**，而不是默认走 Bash
+- 偏好 **验证后如实汇报**
+- 对 **高风险动作** 默认要求确认
+
+所以从使用者角度，最重要的不是“写很厉害的 prompt”，而是：
+
+> 让你的输入形式，尽量贴近它源码里默认支持的工作方式。
+
+下面这些技巧，本质上都是从这些默认偏好里推出来的。
+
+## 3. 使用技巧：怎样提需求，Claude Code 会更稳定
+
+## 3.1 任务写成“目标 + 范围 + 约束 + 验证”
 
 推荐写法：
 
@@ -25,15 +71,15 @@
 为什么有效：
 
 - Claude Code 的默认任务模型是“软件工程任务”，不是自由聊天。
-- 明确范围和验证能减少它在“分析 / 实现 / 顺手优化”之间摇摆。
+- 明确范围和验证，能减少它在“分析 / 实现 / 顺手优化”之间摇摆。
 
 源码支撑：
 
-- [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
-- [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
-- [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
+- [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)：把用户请求理解成软件工程任务
+- [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)：要求先读代码再改
+- [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)：要求如实报告验证结果
 
-## 2. 明确要求“先读代码，再改代码”
+## 3.2 明确要求“先读代码，再改代码”
 
 推荐写法：
 
@@ -44,14 +90,14 @@
 为什么有效：
 
 - 系统提示明确偏好“先理解现有实现，再修改”。
-- 直接点名关键文件，能减少无关探索和上下文噪音。
+- 直接点名关键文件，可以减少无关探索和上下文噪音。
 
 源码支撑：
 
-- [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
-- [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)
+- [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)：要求先读代码
+- [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)：Plan workflow 里先 Explore 现有代码
 
-## 3. 明确强调“最小改动”和“优先复用”
+## 3.3 明确强调“最小改动”和“优先复用”
 
 推荐写法：
 
@@ -62,15 +108,15 @@
 为什么有效：
 
 - Claude Code 明确反对 one-time helpers（一锤子 helper）和 premature abstraction（过早抽象）。
-- 这会让它更愿意顺着现有结构修，而不是顺手重构出一套新设计。
+- 这会让它更愿意顺着现有结构修改，而不是顺手重构出一套新设计。
 
 源码支撑：
 
-- [prompts.ts#L200](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L200)
-- [prompts.ts#L203](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L203)
-- [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)
+- [prompts.ts#L200](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L200)：反对额外 feature / refactor / improvements
+- [prompts.ts#L203](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L203)：反对 one-time abstraction
+- [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)：鼓励寻找现有函数和模式复用
 
-## 4. 能不新建文件，就不要新建文件
+## 3.4 能不新建文件，就不要新建文件
 
 推荐写法：
 
@@ -81,13 +127,13 @@
 为什么有效：
 
 - 系统提示明确把“避免 file bloat（文件膨胀）”设成默认偏好。
-- 这对小改动特别有效，能减少它通过额外 helper / doc / temp file 绕开现有结构。
+- 对小改动尤其有效，因为它能减少通过额外 helper / doc / temp file 绕开现有结构的倾向。
 
 源码支撑：
 
-- [prompts.ts#L231](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L231)
+- [prompts.ts#L231](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L231)：优先编辑已有文件
 
-## 5. 优先让它用 dedicated tools（专用工具），不要滥用 Bash
+## 3.5 优先 dedicated tools，不要默认走 Bash
 
 推荐写法：
 
@@ -102,11 +148,11 @@
 
 源码支撑：
 
-- [prompts.ts#L301](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L301)
-- [prompts.ts#L305](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L305)
-- [BashTool prompt#L297](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L297)
+- [prompts.ts#L301](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L301)：有 dedicated tool 时优先 dedicated tool
+- [prompts.ts#L305](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L305)：不要在有专用工具时用 Bash
+- [BashTool prompt#L297](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L297)：Bash prompt 里也强调并行和正确使用方式
 
-## 6. 验证要求要写清楚，而且要它如实汇报
+## 3.6 验证要求要写清楚，而且要它如实汇报
 
 推荐写法：
 
@@ -117,14 +163,14 @@
 为什么有效：
 
 - 源码里对“未验证却宣称完成”是强约束。
-- 这能减少“看起来完成了，但其实没验证”的常见风险。
+- 这能减少“看起来完成了，但其实没验证”的风险。
 
 源码支撑：
 
-- [prompts.ts#L211](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L211)
-- [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
+- [prompts.ts#L211](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L211)：做完前要验证
+- [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)：如实报告结果
 
-## 7. 独立查询要显式允许 parallel（并行）
+## 3.7 独立查询要显式允许 parallel（并行）
 
 推荐写法：
 
@@ -139,12 +185,12 @@
 
 源码支撑：
 
-- [prompts.ts#L310](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L310)
-- [prompts.ts#L319](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L319)
-- [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)
-- [BashTool prompt#L298](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L298)
+- [prompts.ts#L310](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L310)：独立工具调用并行
+- [prompts.ts#L319](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L319)：subagent 用于并行和保护上下文
+- [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)：Plan workflow 里允许并行探索
+- [BashTool prompt#L298](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L298)：Bash 提示里强调并行
 
-## 8. 高风险动作要显式要求“先确认”
+## 3.8 高风险动作要显式要求“先确认”
 
 推荐写法：
 
@@ -155,14 +201,14 @@
 为什么有效：
 
 - 系统提示对 reversibility（可逆性）和 blast radius（影响范围）非常敏感。
-- 只要动作难以回滚，默认就是应该确认。
+- 只要动作难以回滚，默认就应该确认。
 
 源码支撑：
 
-- [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)
-- [BashTool prompt#L304](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L304)
+- [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)：高风险动作默认先确认
+- [BashTool prompt#L304](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L304)：破坏性 git 操作优先考虑安全替代方案
 
-## 9. 做方案时，先走 Plan Mode 风格
+## 3.9 做方案时，先走 Plan Mode 风格
 
 推荐写法：
 
@@ -177,31 +223,62 @@
 
 源码支撑：
 
-- [messages.ts#L3336](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3336)
-- [messages.ts#L3350](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3350)
+- [messages.ts#L3336](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3336)：Iterative Planning Workflow
+- [messages.ts#L3350](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3350)：First Turn 先扫描关键文件
 
-## 10. 一句最通用的增强指令
+## 4. 注意事项：这些误用最容易让 Claude Code 失稳
 
-推荐写法：
+这部分不是技巧，而是从源码反推出来的常见误区。
 
-```text
-先读相关代码再改；优先复用现有实现；做最小必要改动；验证后如实汇报。
-```
+### 4.1 不要把 Claude Code 当自由聊天助手来用
 
-为什么有效：
+原因：
 
-- 这句话几乎把源码里最稳定的行为约束压成了一句。
-- 不会过度限制模型，但能显著减少“改太多、想太多、报太满”这几类常见偏差。
+- 它的默认工作方式明显偏工程任务，不是开放式随聊。
+- 如果你给的是模糊、无范围、无验证标准的任务，它更容易输出看似合理、但不稳定的结果。
 
 源码支撑：
 
+- [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
+
+### 4.2 不要一上来就让它“大改一遍”
+
+原因：
+
+- 系统提示明显偏向 minimal change（最小改动）。
+- 范围越模糊，它越可能进入顺手重构或过度抽象。
+
+源码支撑：
+
+- [prompts.ts#L200](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L200)
 - [prompts.ts#L203](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L203)
-- [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
+
+### 4.3 不要默认它已经验证过
+
+原因：
+
+- 即使源码里强约束了验证与如实汇报，用户侧仍然应该显式要求验证。
+- 否则某些环境受限任务里，它可能会因为无法执行而只给分析结论。
+
+源码支撑：
+
+- [prompts.ts#L211](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L211)
 - [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
 
-## 11. 最后压成一个用户清单
+### 4.4 不要把高风险授权写得太含糊
 
-如果只保留用户最该记住的 6 条：
+原因：
+
+- 源码里对高风险动作的默认策略就是先确认。
+- 如果用户授权语句模糊，模型和执行边界都更容易漂。
+
+源码支撑：
+
+- [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)
+
+## 5. 最后压成一个最小使用清单
+
+如果只保留最该记住的 6 条：
 
 1. 用“目标 + 范围 + 约束 + 验证”提任务
 2. 明确要求先读代码
