@@ -25,8 +25,17 @@
 - 更像软件工程代理
 - 输入越工程化，表现通常越稳定
 
+架构支撑：
+- `prompt stack` 把 Claude Code 的默认角色定义成软件工程代理，而不是自由聊天助手
+
 源码依据：
 - [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
+
+关键代码片段：
+
+```ts
+The user will primarily request you to perform software engineering tasks.
+```
 
 ## 3. 从源码看：Claude Code 是什么
 
@@ -41,6 +50,12 @@
 - 先建立“terminal agent runtime”这个模型
 - 说明它默认按软件工程任务运行
 
+架构支撑：
+- `main.tsx` 负责 assembly
+- `QueryEngine.ts` 负责 conversation host
+- `query.ts` 负责 turn loop
+- `toolExecution.ts` 负责 tool pipeline
+
 源码依据：
 - [main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx)
 - [QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts)
@@ -50,6 +65,25 @@
 - `main.tsx` 负责 settings / auth / tools / plugins / MCP 的 assembly
 - `QueryEngine.ts` 持有 messages、usage、file state、transcript
 - `query.ts` 负责 `model -> tool -> model` 的 turn loop
+
+关键代码片段：
+
+```ts
+export class QueryEngine {
+  private mutableMessages: Message[]
+  private totalUsage: NonNullableUsage
+  private readFileState: FileStateCache
+}
+```
+
+```ts
+type State = {
+  messages: Message[]
+  toolUseContext: ToolUseContext
+  turnCount: number
+  transition: Continue | undefined
+}
+```
 
 ## 4. 从源码反推：默认偏好的工作方式
 
@@ -63,6 +97,10 @@
 
 讲述重点：
 - 后面所有技巧都从这些偏好推导出来
+
+架构支撑：
+- 这些偏好主要落在 `prompt stack`
+- 执行层再由 `tool pipeline` 和权限系统兜底
 
 源码依据：
 - [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
@@ -78,6 +116,24 @@
 - `Report outcomes faithfully`
 - `ask for confirmation before proceeding`
 
+关键代码片段：
+
+```ts
+In general, do not propose changes to code you haven't read.
+```
+
+```ts
+Do NOT use the Bash tool to run commands when a relevant dedicated tool is provided.
+```
+
+```ts
+Report outcomes faithfully: if tests fail, say so ...
+```
+
+```ts
+ask for confirmation before proceeding
+```
+
 ## 5. 技巧 1：任务写成“目标 + 范围 + 约束 + 验证”
 
 推荐写法：
@@ -92,6 +148,10 @@
 为什么有效：
 - 能减少分析 / 实现 / 顺手优化之间的歧义
 
+架构支撑：
+- `prompt stack` 默认把请求理解成软件工程任务
+- `turn loop` 会围绕用户给出的目标、范围和验证要求持续推进
+
 源码依据：
 - [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
 - [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
@@ -101,6 +161,20 @@
 - `software engineering tasks`
 - `do not propose changes to code you haven't read`
 - `Report outcomes faithfully`
+
+关键代码片段：
+
+```ts
+The user will primarily request you to perform software engineering tasks.
+```
+
+```ts
+In general, do not propose changes to code you haven't read.
+```
+
+```ts
+Report outcomes faithfully: if tests fail, say so ...
+```
 
 ## 6. 技巧 2：明确要求先读代码，再改代码
 
@@ -114,6 +188,10 @@
 - 符合系统默认工作顺序
 - 能减少无关探索
 
+架构支撑：
+- `prompt stack` 明确要求先读代码
+- `Plan Mode workflow` 也要求先 explore，再规划或实现
+
 源码依据：
 - [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
 - [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)
@@ -122,6 +200,18 @@
 - `read it first`
 - `Explore — Use ... to read code`
 - `Look for existing functions, utilities, and patterns to reuse`
+
+关键代码片段：
+
+```ts
+In general, do not propose changes to code you haven't read.
+If a user asks about or wants you to modify a file, read it first.
+```
+
+```md
+1. **Explore** — Use ${getReadOnlyToolNames()} to read code.
+Look for existing functions, utilities, and patterns to reuse.
+```
 
 ## 7. 技巧 3：强调最小改动、优先复用
 
@@ -134,6 +224,10 @@
 为什么有效：
 - 能压住顺手重构和过早抽象
 
+架构支撑：
+- `prompt stack` 本身就在抑制范围漂移和不必要抽象
+- `tool pipeline` 更适合执行局部、清晰、可验证的改动
+
 源码依据：
 - [prompts.ts#L200](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L200)
 - [prompts.ts#L203](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L203)
@@ -141,6 +235,16 @@
 关键代码点：
 - `Don't add features, refactor code, or make "improvements" beyond what was asked`
 - `Don't create helpers, utilities, or abstractions for one-time operations`
+
+关键代码片段：
+
+```ts
+Don't add features, refactor code, or make "improvements" beyond what was asked.
+```
+
+```ts
+Don't create helpers, utilities, or abstractions for one-time operations.
+```
 
 ## 8. 技巧 4：优先 dedicated tools，不要默认 Bash
 
@@ -154,6 +258,10 @@
 - Bash 是 fallback，不是首选
 - 专用工具更容易被解释和审查
 
+架构支撑：
+- `tool pipeline` 里 dedicated tools 是一等能力面
+- Bash 是更自由也更高风险的 fallback surface
+
 源码依据：
 - [prompts.ts#L301](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L301)
 - [prompts.ts#L305](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L305)
@@ -163,6 +271,20 @@
 - `default to using the dedicated tool`
 - `Do NOT use the Bash tool ...`
 - `If the commands are independent and can run in parallel`
+
+关键代码片段：
+
+```ts
+default to using the dedicated tool and only fallback on using the Bash tool ...
+```
+
+```ts
+Do NOT use the Bash tool to run commands when a relevant dedicated tool is provided.
+```
+
+```ts
+If the commands are independent and can run in parallel, make multiple Bash tool calls in a single message.
+```
 
 ## 9. 技巧 5：验证要求要写清楚，而且要如实汇报
 
@@ -175,6 +297,10 @@
 为什么有效：
 - 可以减少“看似完成、其实没验证”的风险
 
+架构支撑：
+- `prompt stack` 明确要求 verify 和 faithful reporting
+- `turn loop` 默认不会替用户假设“验证已经完成”
+
 源码依据：
 - [prompts.ts#L211](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L211)
 - [prompts.ts#L240](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L240)
@@ -182,6 +308,16 @@
 关键代码点：
 - `verify it actually works`
 - `Never claim "all tests pass" when output shows failures`
+
+关键代码片段：
+
+```ts
+Before reporting a task complete, verify it actually works.
+```
+
+```ts
+Never claim "all tests pass" when output shows failures.
+```
 
 ## 10. 技巧 6：高风险动作要显式要求先确认
 
@@ -194,6 +330,10 @@
 为什么有效：
 - 这是系统默认的保守策略
 
+架构支撑：
+- `prompt stack` 先定义高风险动作的确认边界
+- `tool pipeline` 和 Bash 约束负责在执行面进一步收紧
+
 源码依据：
 - [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)
 - [BashTool prompt#L304](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/prompt.ts#L304)
@@ -202,6 +342,20 @@
 - `reversibility and blast radius`
 - `ask for confirmation before proceeding`
 - `Only use destructive operations when they are truly the best approach`
+
+关键代码片段：
+
+```ts
+Carefully consider the reversibility and blast radius of actions.
+```
+
+```ts
+ask for confirmation before proceeding
+```
+
+```ts
+Only use destructive operations when they are truly the best approach.
+```
 
 ## 11. 技巧 7：独立查询可以显式允许 parallel
 
@@ -214,6 +368,10 @@
 为什么有效：
 - 系统原生鼓励独立工具调用并行化
 
+架构支撑：
+- `tool pipeline` 原生支持 independent tool calls 并行
+- `Plan Mode workflow` 也鼓励先并行探索，再收敛实现
+
 源码依据：
 - [prompts.ts#L310](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L310)
 - [messages.ts#L3344](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts#L3344)
@@ -224,6 +382,21 @@
 - `parallelize complex searches`
 - `If the commands are independent and can run in parallel`
 
+关键代码片段：
+
+```ts
+make all independent tool calls in parallel
+```
+
+```md
+1. **Explore** — Use ${getReadOnlyToolNames()} to read code.
+Look for existing functions, utilities, and patterns to reuse.
+```
+
+```ts
+If the commands are independent and can run in parallel, make multiple Bash tool calls ...
+```
+
 ## 12. 常见误区与注意事项
 
 核心信息：
@@ -231,6 +404,10 @@
 - 不要一上来让它大改一遍
 - 不要默认它已经验证过
 - 不要把高风险授权写得太模糊
+
+架构支撑：
+- 这些误区本质上都在对抗 `prompt stack` 的默认约束
+- 一旦输入方式偏离默认工作流，`turn loop` 的稳定性就更容易下降
 
 源码依据：
 - [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
@@ -243,6 +420,24 @@
 - `Don't add features ... beyond what was asked`
 - `Report outcomes faithfully`
 - `ask for confirmation before proceeding`
+
+关键代码片段：
+
+```ts
+The user will primarily request you to perform software engineering tasks.
+```
+
+```ts
+Don't add features, refactor code, or make "improvements" beyond what was asked.
+```
+
+```ts
+Report outcomes faithfully ...
+```
+
+```ts
+ask for confirmation before proceeding
+```
 
 ## 13. 最小使用清单
 
