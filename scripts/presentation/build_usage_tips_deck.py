@@ -134,6 +134,27 @@ def add_panel(slide, x, y, w, h, title, body_lines, title_fill=ACCENT_SOFT, line
     return shape
 
 
+def add_plain_box(slide, x, y, w, h, body_lines, fill=WHITE, line_color=LINE, size=15):
+    shape = slide.shapes.add_shape(
+        MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h)
+    )
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = fill
+    shape.line.color.rgb = line_color
+    tf = shape.text_frame
+    style_tf(tf)
+    tf.clear()
+    for i, item in enumerate(body_lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.bullet = False
+        p.level = 0
+        p.space_after = Pt(6)
+        r = p.add_run()
+        r.text = item
+        set_run_font(r, size, TEXT)
+    return shape
+
+
 def add_code_box(slide, x, y, w, h, code):
     shape = slide.shapes.add_shape(
         MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h)
@@ -209,24 +230,24 @@ def add_overview(prs):
     add_bg(slide, BG)
     add_title(slide, "总结构图：Claude Code 的主执行链", "terminal agent runtime（终端代理运行时）视角")
 
-    add_panel(slide, 0.7, 1.8, 2.0, 0.95, "输入", ["User Prompt", "用户输入"])
-    add_panel(slide, 2.95, 1.8, 2.05, 0.95, "约束层", ["Prompt Stack", "提示词栈"])
-    add_panel(slide, 5.25, 1.8, 2.2, 0.95, "会话层", ["QueryEngine", "Conversation Host"])
-    add_panel(slide, 7.75, 1.8, 2.2, 0.95, "执行层", ["query.ts", "Turn Loop"])
-    add_panel(slide, 10.2, 1.8, 2.15, 0.95, "工具层", ["Tool Pipeline", "工具执行流水线"])
+    add_panel(slide, 0.7, 1.85, 1.85, 1.0, "用户输入", ["User Prompt", "用户输入"])
+    add_panel(slide, 2.8, 1.85, 2.05, 1.0, "提示词栈", ["Prompt Stack", "默认行为约束"])
+    add_panel(slide, 5.1, 1.85, 2.15, 1.0, "会话宿主", ["QueryEngine", "Conversation Host"])
+    add_panel(slide, 7.55, 1.85, 2.1, 1.0, "轮次循环", ["query.ts", "Turn Loop"])
+    add_panel(slide, 9.95, 1.85, 2.55, 1.0, "工具执行流水线", ["Tool Pipeline", "执行与权限边界"])
 
-    add_panel(slide, 2.1, 3.45, 3.0, 1.15, "能力面", ["Tools / Bash / Read / Edit", "Tasks / Subagents / Mailbox"])
-    add_panel(slide, 5.35, 3.45, 2.7, 1.15, "执行环境", ["Filesystem / Shell / MCP"])
-    add_panel(slide, 8.3, 3.45, 3.25, 1.15, "外围控制面", ["Settings / Auth / Policy", "Control Plane / 控制面"])
-    add_panel(slide, 3.15, 5.0, 5.5, 0.95, "可观测性与恢复", ["Telemetry / Profiling / Transcript", "可观测性、持久化、恢复"])
+    add_panel(slide, 1.55, 3.55, 4.15, 1.2, "能力与任务", ["Tools / Bash / Read / Edit", "Tasks / Subagents / Mailbox"])
+    add_panel(slide, 5.95, 3.55, 2.45, 1.2, "执行环境", ["Filesystem", "Shell / MCP"])
+    add_panel(slide, 8.7, 3.55, 3.1, 1.2, "控制面", ["Settings / Auth / Policy", "Control Plane / 控制面"])
+    add_panel(slide, 3.0, 5.25, 5.5, 1.0, "可观测性与恢复", ["Telemetry / Profiling / Transcript", "持久化、观测、恢复"])
 
-    connect(slide, 2.7, 2.28, 2.95, 2.28)
-    connect(slide, 5.0, 2.28, 5.25, 2.28)
-    connect(slide, 7.45, 2.28, 7.75, 2.28)
-    connect(slide, 9.95, 2.28, 10.2, 2.28)
-    connect(slide, 8.85, 2.75, 8.85, 3.42)
-    connect(slide, 6.7, 4.58, 6.0, 4.58)
-    connect(slide, 6.7, 4.58, 6.7, 5.0)
+    connect(slide, 2.55, 2.35, 2.8, 2.35)
+    connect(slide, 4.85, 2.35, 5.1, 2.35)
+    connect(slide, 7.25, 2.35, 7.55, 2.35)
+    connect(slide, 9.65, 2.35, 9.95, 2.35)
+    connect(slide, 10.7, 2.85, 10.25, 3.55)
+    connect(slide, 7.15, 4.15, 6.95, 4.15)
+    connect(slide, 5.75, 4.15, 5.75, 5.25)
 
     add_note(
         slide,
@@ -238,11 +259,10 @@ def add_content(prs, title, one_liner, bullets, code=None, note=None):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, title)
-    add_panel(slide, 0.72, 1.68, 12.0, 0.78, "本页一句话", [one_liner])
-    add_bullets(slide, bullets, 0.82, 2.72, 6.1, 3.2, size=17)
+    add_plain_box(slide, 0.72, 1.68, 12.0, 0.72, [one_liner], fill=ACCENT_SOFT, line_color=ACCENT, size=16)
+    add_bullets(slide, bullets, 0.82, 2.68, 6.1, 3.35, size=17)
     if code:
-        add_panel(slide, 7.15, 2.72, 5.25, 0.6, "关键代码片段", [])
-        add_code_box(slide, 7.15, 3.05, 5.25, 2.3, code)
+        add_code_box(slide, 7.15, 2.7, 5.25, 2.7, code)
     if note:
         add_note(slide, note)
     return slide
@@ -252,12 +272,11 @@ def add_tip(prs, title, one_liner, tip, why, architecture, code, source_note):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, title)
-    add_panel(slide, 0.72, 1.62, 12.0, 0.75, "本页一句话", [one_liner])
-    add_panel(slide, 0.72, 2.58, 3.55, 1.58, "推荐写法", tip)
-    add_panel(slide, 4.52, 2.58, 3.8, 1.58, "为什么有效", why)
-    add_panel(slide, 8.57, 2.58, 4.15, 1.58, "架构支撑", architecture)
-    add_panel(slide, 0.72, 4.45, 12.0, 0.56, "关键代码片段", [])
-    add_code_box(slide, 0.72, 4.82, 12.0, 1.2, code)
+    add_plain_box(slide, 0.72, 1.62, 12.0, 0.72, [one_liner], fill=ACCENT_SOFT, line_color=ACCENT, size=16)
+    add_panel(slide, 0.72, 2.55, 3.55, 1.7, "示例提示词", tip)
+    add_panel(slide, 4.52, 2.55, 3.8, 1.7, "源码解释", why)
+    add_panel(slide, 8.57, 2.55, 4.15, 1.7, "证据链", architecture)
+    add_code_box(slide, 0.72, 4.55, 12.0, 1.35, code)
     add_note(slide, source_note)
     return slide
 
