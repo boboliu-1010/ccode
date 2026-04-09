@@ -155,25 +155,49 @@ def build():
         "Claude Code 使用技巧与注意事项",
         "从源码反推的用户侧实践建议",
         [
-            "关注点：怎么提需求、怎么控制行为、怎么避免常见误用",
-            "每条技巧都给出源码支撑，不只讲经验",
+            "先解释 Claude Code 从工程上是什么，再解释怎样用会更稳",
+            "每条技巧都附源码支撑，不只讲经验",
         ],
     )
     add_content_slide(
         prs,
-        "先给结论",
+        "先给结论：Claude Code 不是什么",
         [
-            "Claude Code 默认把用户请求理解成软件工程任务，不是自由聊天",
-            "它偏好：先读代码、最小改动、优先复用、专用工具优先、验证后如实汇报",
-            "所以用户提示词越工程化，它的表现越稳定",
+            "它不是自由聊天助手，也不是“随便说一句就稳定帮你把工程活干好”的黑盒",
+            "从源码看，它更像 software engineering agent（软件工程代理）",
+            "所以用户输入越工程化，Claude Code 的表现通常越稳定",
         ],
-        "核心依据主要来自 prompts.ts、messages.ts 和 BashTool prompt。",
+        "源码依据：prompts.ts 把默认场景定义为 software engineering task。",
+    )
+    add_content_slide(
+        prs,
+        "从源码看：Claude Code 是什么",
+        [
+            "main.tsx：bootstrap / assembly（启动装配）",
+            "QueryEngine.ts：conversation host（会话宿主）",
+            "query.ts：turn loop / runtime kernel（轮次循环 / 运行时内核）",
+            "toolExecution.ts：tool pipeline（工具执行流水线）",
+            "settings / auth / prompt / policy：control plane（控制面）",
+        ],
+        "这决定了它默认不是把输入当闲聊，而是当软件工程任务。",
+    )
+    add_content_slide(
+        prs,
+        "从源码反推：默认偏好的工作方式",
+        [
+            "先读代码，再改代码",
+            "最小必要改动，优先复用已有实现",
+            "优先 dedicated tools，而不是默认 Bash",
+            "验证后如实汇报",
+            "高风险动作默认先确认",
+        ],
+        "这些偏好主要来自 prompts.ts、messages.ts 和 BashTool prompt。",
     )
     add_tip_slide(
         prs,
         "技巧 1：任务写成“目标 + 范围 + 约束 + 验证”",
         "目标：修复/实现……\n范围：只改……\n约束：不要做无关重构\n验证：跑测试并说明结果",
-        "源码把默认场景设成软件工程任务；明确范围和验证能减少分析/实现/顺手优化之间的歧义。",
+        "源码把默认场景设成 software engineering task；明确范围和验证能减少分析/实现/顺手优化之间的歧义。",
         "prompts.ts#L221\nprompts.ts#L230\nprompts.ts#L240",
     )
     add_tip_slide(
@@ -192,49 +216,49 @@ def build():
     )
     add_tip_slide(
         prs,
-        "技巧 4：能不新建文件，就不要新建文件",
-        "除非绝对必要，不要新建文件，优先修改现有文件。",
-        "系统把避免 file bloat 设为默认偏好；对小改动尤其能防止多余 helper / temp file。",
-        "prompts.ts#L231",
-    )
-    add_tip_slide(
-        prs,
-        "技巧 5：优先 dedicated tools，不要滥用 Bash",
+        "技巧 4：优先 dedicated tools，不要默认 Bash",
         "优先直接读写文件，不要用 Bash 做本可由专用工具完成的事情。",
         "Bash 在源码里是 fallback tool，不是首选；专用工具更容易被审查、解释和权限约束。",
         "prompts.ts#L301\nprompts.ts#L305\nBashTool prompt#L297",
     )
     add_tip_slide(
         prs,
-        "技巧 6：验证要求要写清楚，而且要如实汇报",
+        "技巧 5：验证要求要写清楚，而且要如实汇报",
         "改完后跑相关测试；如果没跑，请明确说明没有跑。",
         "源码对“未验证却宣称完成”是强约束；这样能减少看似完成、其实没验证的风险。",
         "prompts.ts#L211\nprompts.ts#L240",
     )
     add_tip_slide(
         prs,
-        "技巧 7：独立查询要显式允许 parallel",
-        "如果这些查询彼此独立，可以并行完成；不要重复做相同搜索。",
-        "系统提示明确鼓励独立工具调用并行化；Bash prompt 和 Plan Mode 也都强调能并行就并行。",
-        "prompts.ts#L310\nprompts.ts#L319\nmessages.ts#L3344",
-    )
-    add_tip_slide(
-        prs,
-        "技巧 8：高风险动作要显式要求先确认",
+        "技巧 6：高风险动作要显式要求先确认",
         "涉及 push、删除、覆盖、外部发送、破坏性 git 操作时，先告诉我并确认。",
         "源码对 reversibility 和 blast radius 非常敏感；难以回滚的动作默认就应确认。",
         "prompts.ts#L258\nBashTool prompt#L304",
     )
-    add_tip_slide(
+    add_content_slide(
         prs,
-        "技巧 9：做方案时，先走 Plan Mode 风格",
-        "先不要实现。先快速读关键文件，给我一个可执行计划；只问代码里无法确定的问题。",
-        "Plan Mode 的原生流程就是先 Explore，再写计划，再只问代码解决不了的问题。",
-        "messages.ts#L3336\nmessages.ts#L3350",
+        "两个进阶技巧",
+        [
+            "独立查询可以显式允许 parallel（并行）",
+            "做方案时，先走 Plan Mode 风格：先 Explore，再写计划，再问代码里无法确定的问题",
+            "这两条都不是经验贴，而是源码里明确写出来的工作流偏好",
+        ],
+        "源码依据：prompts.ts#L310、messages.ts#L3336、BashTool prompt#L298。",
     )
     add_content_slide(
         prs,
-        "最后收成 6 条最该记住的注意事项",
+        "常见误区与注意事项",
+        [
+            "不要把 Claude Code 当自由聊天助手来用",
+            "不要一上来就让它“大改一遍”",
+            "不要默认它已经验证过",
+            "不要把高风险授权写得太模糊",
+        ],
+        "这些误区都能在 prompts.ts 的默认约束里找到根源。",
+    )
+    add_content_slide(
+        prs,
+        "最后收成 6 条最小使用清单",
         [
             "任务写成：目标 + 范围 + 约束 + 验证",
             "明确要求先读代码",
@@ -243,7 +267,7 @@ def build():
             "验证结果要如实汇报",
             "高风险动作先确认",
         ],
-        "这些建议不是经验口号，而是能直接在源码 prompt 和执行约束里找到依据。",
+        "这些建议的共同点是：让用户输入尽量贴近 Claude Code 源码里的默认工作方式。",
     )
 
     out = Path("/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude Code 使用技巧与注意事项-WPS兼容版.pptx")
