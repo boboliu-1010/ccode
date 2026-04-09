@@ -10,16 +10,20 @@ from pptx.util import Inches, Pt
 FONT = "Arial"
 MONO = "Courier New"
 
-TITLE = RGBColor(15, 23, 42)
-TEXT = RGBColor(30, 41, 59)
-MUTED = RGBColor(71, 85, 105)
-ACCENT = RGBColor(37, 99, 235)
-ACCENT_SOFT = RGBColor(219, 234, 254)
-BG = RGBColor(248, 250, 252)
+TITLE = RGBColor(241, 245, 249)
+TEXT = RGBColor(226, 232, 240)
+MUTED = RGBColor(148, 163, 184)
+ACCENT = RGBColor(34, 211, 238)
+ACCENT_SOFT = RGBColor(15, 23, 42)
+BG = RGBColor(2, 6, 23)
 WHITE = RGBColor(255, 255, 255)
 LEAD = RGBColor(16, 24, 40)
-LINE = RGBColor(203, 213, 225)
-CODE_BG = RGBColor(241, 245, 249)
+LINE = RGBColor(30, 41, 59)
+CODE_BG = RGBColor(3, 7, 18)
+PANEL_BG = RGBColor(10, 18, 36)
+PANEL_HDR = RGBColor(12, 30, 56)
+CODE_HDR = RGBColor(13, 20, 38)
+CODE_TEXT = RGBColor(196, 255, 236)
 
 
 def set_run_font(run, size, color, bold=False, font=FONT):
@@ -67,7 +71,7 @@ def add_title(slide, text, subtitle=None, lead=False):
             MSO_AUTO_SHAPE_TYPE.RECTANGLE, Inches(0.62), Inches(1.42), Inches(2.4), Inches(0.02)
         )
         line.fill.solid()
-        line.fill.fore_color.rgb = LINE
+        line.fill.fore_color.rgb = ACCENT
         line.line.fill.background()
 
 
@@ -103,7 +107,7 @@ def add_panel(slide, x, y, w, h, title, body_lines, title_fill=ACCENT_SOFT, line
         MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h)
     )
     shape.fill.solid()
-    shape.fill.fore_color.rgb = WHITE
+    shape.fill.fore_color.rgb = PANEL_BG
     shape.line.color.rgb = line_color
 
     header = slide.shapes.add_shape(
@@ -161,14 +165,26 @@ def add_code_box(slide, x, y, w, h, code):
     )
     shape.fill.solid()
     shape.fill.fore_color.rgb = CODE_BG
-    shape.line.color.rgb = LINE
+    shape.line.color.rgb = ACCENT
+    header = slide.shapes.add_shape(
+        MSO_AUTO_SHAPE_TYPE.RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(0.28)
+    )
+    header.fill.solid()
+    header.fill.fore_color.rgb = CODE_HDR
+    header.line.color.rgb = CODE_HDR
+    tf = header.text_frame
+    style_tf(tf, 1, 1, 6, 6)
+    p = tf.paragraphs[0]
+    r = p.add_run()
+    r.text = "code"
+    set_run_font(r, 10, ACCENT, True, font=MONO)
     tf = shape.text_frame
-    style_tf(tf, 6, 6, 8, 8)
+    style_tf(tf, 16, 6, 10, 10)
     tf.clear()
     p = tf.paragraphs[0]
     r = p.add_run()
     r.text = code
-    set_run_font(r, 13, TEXT, font=MONO)
+    set_run_font(r, 12.5, CODE_TEXT, font=MONO)
     return shape
 
 
@@ -176,7 +192,7 @@ def add_chip(slide, x, y, w, h, text, fill=ACCENT_SOFT, color=ACCENT):
     shape = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h))
     shape.fill.solid()
     shape.fill.fore_color.rgb = fill
-    shape.line.color.rgb = fill
+    shape.line.color.rgb = ACCENT
     tf = shape.text_frame
     style_tf(tf, 1, 1, 4, 4)
     p = tf.paragraphs[0]
@@ -225,21 +241,56 @@ def add_lead(prs):
     add_note(slide, "建议节奏：先建立整体模型，再解释默认偏好，最后落到用户技巧。", 0.88, 6.8, 11.8, 0.3)
 
 
+def add_architecture_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "从源码看：Claude Code 是什么", "一个 terminal agent runtime（终端代理运行时）的最小架构图")
+
+    add_panel(slide, 0.85, 1.85, 2.2, 1.0, "入口层", ["main.tsx", "bootstrap / assembly"], title_fill=PANEL_HDR)
+    add_panel(slide, 3.45, 1.85, 2.4, 1.0, "会话层", ["QueryEngine.ts", "conversation host"], title_fill=PANEL_HDR)
+    add_panel(slide, 6.25, 1.85, 2.4, 1.0, "执行层", ["query.ts", "turn loop / runtime kernel"], title_fill=PANEL_HDR)
+    add_panel(slide, 9.05, 1.85, 3.1, 1.0, "工具执行层", ["toolExecution.ts", "tool pipeline"], title_fill=PANEL_HDR)
+
+    add_panel(slide, 1.7, 3.65, 3.2, 1.15, "能力面", ["Tools / Bash / Read / Edit", "Tasks / Subagents / Mailbox"], title_fill=PANEL_HDR)
+    add_panel(slide, 5.35, 3.65, 2.45, 1.15, "执行环境", ["Filesystem / Shell", "MCP"], title_fill=PANEL_HDR)
+    add_panel(slide, 8.15, 3.65, 3.2, 1.15, "控制面", ["Settings / Auth / Policy", "Prompt / Permissions"], title_fill=PANEL_HDR)
+
+    connect(slide, 3.05, 2.35, 3.45, 2.35)
+    connect(slide, 5.85, 2.35, 6.25, 2.35)
+    connect(slide, 8.65, 2.35, 9.05, 2.35)
+    connect(slide, 10.6, 2.85, 9.75, 3.65)
+    connect(slide, 7.8, 4.22, 8.15, 4.22)
+    connect(slide, 4.9, 4.22, 5.35, 4.22)
+
+    add_plain_box(
+        slide,
+        1.35,
+        5.35,
+        10.65,
+        0.75,
+        ["一句话：Claude Code 不是“模型 API + 终端壳”，而是由会话层、轮次循环、工具执行层和控制面组成的本地代理运行时。"],
+        fill=ACCENT_SOFT,
+        line_color=ACCENT,
+        size=15,
+    )
+    add_note(slide, "代码锚点：main.tsx / QueryEngine.ts / query.ts / toolExecution.ts")
+
+
 def add_overview(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, "总结构图：Claude Code 的主执行链", "terminal agent runtime（终端代理运行时）视角")
 
-    add_panel(slide, 0.7, 1.85, 1.85, 1.0, "用户输入", ["User Prompt", "用户输入"])
-    add_panel(slide, 2.8, 1.85, 2.05, 1.0, "提示词栈", ["Prompt Stack", "默认行为约束"])
-    add_panel(slide, 5.1, 1.85, 2.15, 1.0, "会话宿主", ["QueryEngine", "Conversation Host"])
-    add_panel(slide, 7.55, 1.85, 2.1, 1.0, "轮次循环", ["query.ts", "Turn Loop"])
-    add_panel(slide, 9.95, 1.85, 2.55, 1.0, "工具执行流水线", ["Tool Pipeline", "执行与权限边界"])
+    add_panel(slide, 0.7, 1.85, 1.85, 1.0, "用户输入", ["User Prompt", "用户输入"], title_fill=PANEL_HDR)
+    add_panel(slide, 2.8, 1.85, 2.05, 1.0, "提示词栈", ["Prompt Stack", "默认行为约束"], title_fill=PANEL_HDR)
+    add_panel(slide, 5.1, 1.85, 2.15, 1.0, "会话宿主", ["QueryEngine", "Conversation Host"], title_fill=PANEL_HDR)
+    add_panel(slide, 7.55, 1.85, 2.1, 1.0, "轮次循环", ["query.ts", "Turn Loop"], title_fill=PANEL_HDR)
+    add_panel(slide, 9.95, 1.85, 2.55, 1.0, "工具执行流水线", ["Tool Pipeline", "执行与权限边界"], title_fill=PANEL_HDR)
 
-    add_panel(slide, 1.55, 3.55, 4.15, 1.2, "能力与任务", ["Tools / Bash / Read / Edit", "Tasks / Subagents / Mailbox"])
-    add_panel(slide, 5.95, 3.55, 2.45, 1.2, "执行环境", ["Filesystem", "Shell / MCP"])
-    add_panel(slide, 8.7, 3.55, 3.1, 1.2, "控制面", ["Settings / Auth / Policy", "Control Plane / 控制面"])
-    add_panel(slide, 3.0, 5.25, 5.5, 1.0, "可观测性与恢复", ["Telemetry / Profiling / Transcript", "持久化、观测、恢复"])
+    add_panel(slide, 1.55, 3.55, 4.15, 1.2, "能力与任务", ["Tools / Bash / Read / Edit", "Tasks / Subagents / Mailbox"], title_fill=PANEL_HDR)
+    add_panel(slide, 5.95, 3.55, 2.45, 1.2, "执行环境", ["Filesystem", "Shell / MCP"], title_fill=PANEL_HDR)
+    add_panel(slide, 8.7, 3.55, 3.1, 1.2, "控制面", ["Settings / Auth / Policy", "Control Plane / 控制面"], title_fill=PANEL_HDR)
+    add_panel(slide, 3.0, 5.25, 5.5, 1.0, "可观测性与恢复", ["Telemetry / Profiling / Transcript", "持久化、观测、恢复"], title_fill=PANEL_HDR)
 
     connect(slide, 2.55, 2.35, 2.8, 2.35)
     connect(slide, 4.85, 2.35, 5.1, 2.35)
@@ -302,20 +353,7 @@ def build():
         "源码依据：/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221",
     )
 
-    add_content(
-        prs,
-        "从源码看：Claude Code 是什么",
-        "Claude Code 是 terminal agent runtime（终端代理运行时），不是只包了一层模型 API 的 CLI。",
-        [
-            "main.tsx：bootstrap / assembly（启动 / 装配）",
-            "QueryEngine.ts：conversation host（会话宿主）",
-            "query.ts：turn loop / runtime kernel（轮次循环 / 运行时内核）",
-            "toolExecution.ts：tool pipeline（工具执行流水线）",
-            "settings / auth / policy：control plane（控制面）",
-        ],
-        "export class QueryEngine {\n  private mutableMessages: Message[]\n  private totalUsage: NonNullableUsage\n  private readFileState: FileStateCache\n}\n\ntype State = {\n  messages: Message[]\n  toolUseContext: ToolUseContext\n  turnCount: number\n  transition: Continue | undefined\n}",
-        "源码依据：QueryEngine.ts、query.ts、toolExecution.ts",
-    )
+    add_architecture_slide(prs)
 
     add_content(
         prs,
