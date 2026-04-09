@@ -444,7 +444,7 @@ def build():
             "所以输入越工程化，它通常越稳定",
         ],
         "The user will primarily request you to perform software engineering tasks.",
-        "源码依据：/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221",
+        "源码依据：src/constants/prompts.ts#L221",
         snippet_label="源码提示词",
     )
 
@@ -641,7 +641,7 @@ def build():
         None,
     )
 
-    out = Path("/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude Code 使用技巧与注意事项.pptx")
+    out = Path(__file__).resolve().parents[2] / "docs/zh/09-Claude Code 使用技巧与注意事项.pptx"
     prs.save(out)
     print(out)
 
