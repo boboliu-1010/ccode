@@ -5,6 +5,24 @@
 对应正文：
 - [09-Claude Code 使用技巧与注意事项.md](/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude%20Code%20使用技巧与注意事项.md)
 
+## 术语对照
+
+这组术语建议在 PPT 中统一按“英文术语（中文对照）”展示。
+
+| 英文术语 | 中文对照 |
+| --- | --- |
+| `terminal agent runtime` | 终端代理运行时 |
+| `prompt stack` | 提示词栈 |
+| `conversation host` | 会话宿主 |
+| `turn loop` | 轮次循环 |
+| `runtime kernel` | 运行时内核 |
+| `tool pipeline` | 工具执行流水线 |
+| `control plane` | 控制面 |
+| `Plan Mode workflow` | 规划模式工作流 |
+| `dedicated tools` | 专用工具 |
+| `parallel` | 并行 |
+| `software engineering tasks` | 软件工程任务 |
+
 ## 0. 开场总结构图
 
 用途：
@@ -13,9 +31,9 @@
 
 建议讲法：
 - 最上层是用户输入
-- 中间是 `prompt stack`、`turn loop`、`tool pipeline`
+- 中间是 `prompt stack（提示词栈）`、`turn loop（轮次循环）`、`tool pipeline（工具执行流水线）`
 - 下层是 tools / tasks / filesystem / shell
-- 右侧是 settings / auth / policy 这些 `control plane`
+- 右侧是 settings / auth / policy 这些 `control plane（控制面）`
 - 结论是：用户使用技巧之所以有效，是因为它们在影响这条主执行链和外围控制面
 
 UML 总览图：
@@ -42,16 +60,16 @@ flowchart TD
 ```
 
 这一页讲什么：
-- Claude Code 不是自由聊天助手，而是一个 `terminal agent runtime`
-- 用户输入不会直接变成输出，而是经过 `prompt stack -> turn loop -> tool pipeline`
+- Claude Code 不是自由聊天助手，而是一个 `terminal agent runtime（终端代理运行时）`
+- 用户输入不会直接变成输出，而是经过 `prompt stack（提示词栈） -> turn loop（轮次循环） -> tool pipeline（工具执行流水线）`
 - 使用技巧的作用，本质上是在影响这条链路的稳定性
 
 架构支撑：
 - `main.tsx` 负责整体 assembly
-- `QueryEngine.ts` 负责会话级 host
-- `query.ts` 负责 turn loop
-- `toolExecution.ts` 负责工具执行链
-- settings / auth / policy 构成 control plane
+- `QueryEngine.ts` 负责 `conversation host（会话宿主）`
+- `query.ts` 负责 `turn loop（轮次循环）`
+- `toolExecution.ts` 负责 `tool pipeline（工具执行流水线）`
+- settings / auth / policy 构成 `control plane（控制面）`
 
 源码依据：
 - [main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx)
@@ -80,7 +98,7 @@ flowchart TD
 - 输入越工程化，表现通常越稳定
 
 架构支撑：
-- `prompt stack` 把 Claude Code 的默认角色定义成软件工程代理，而不是自由聊天助手
+- `prompt stack（提示词栈）` 把 Claude Code 的默认角色定义成软件工程代理，而不是自由聊天助手
 
 源码依据：
 - [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
@@ -94,21 +112,21 @@ The user will primarily request you to perform software engineering tasks.
 ## 3. 从源码看：Claude Code 是什么
 
 核心信息：
-- `main.tsx`：bootstrap / assembly
-- `QueryEngine.ts`：conversation host
-- `query.ts`：turn loop / runtime kernel
-- `toolExecution.ts`：tool pipeline
-- settings / auth / prompt / policy：control plane
+- `main.tsx`：`bootstrap / assembly（启动 / 装配）`
+- `QueryEngine.ts`：`conversation host（会话宿主）`
+- `query.ts`：`turn loop / runtime kernel（轮次循环 / 运行时内核）`
+- `toolExecution.ts`：`tool pipeline（工具执行流水线）`
+- settings / auth / prompt / policy：`control plane（控制面）`
 
 讲述重点：
-- 先建立“terminal agent runtime”这个模型
+- 先建立“`terminal agent runtime（终端代理运行时）`”这个模型
 - 说明它默认按软件工程任务运行
 
 架构支撑：
 - `main.tsx` 负责 assembly
-- `QueryEngine.ts` 负责 conversation host
-- `query.ts` 负责 turn loop
-- `toolExecution.ts` 负责 tool pipeline
+- `QueryEngine.ts` 负责 `conversation host（会话宿主）`
+- `query.ts` 负责 `turn loop（轮次循环）`
+- `toolExecution.ts` 负责 `tool pipeline（工具执行流水线）`
 
 源码依据：
 - [main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx)
@@ -145,7 +163,7 @@ type State = {
 - 先读代码
 - 最小改动
 - 优先复用
-- 优先 dedicated tools
+- 优先 `dedicated tools（专用工具）`
 - 验证后如实汇报
 - 高风险动作先确认
 
@@ -153,8 +171,8 @@ type State = {
 - 后面所有技巧都从这些偏好推导出来
 
 架构支撑：
-- 这些偏好主要落在 `prompt stack`
-- 执行层再由 `tool pipeline` 和权限系统兜底
+- 这些偏好主要落在 `prompt stack（提示词栈）`
+- 执行层再由 `tool pipeline（工具执行流水线）` 和权限系统兜底
 
 源码依据：
 - [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
@@ -203,8 +221,8 @@ ask for confirmation before proceeding
 - 能减少分析 / 实现 / 顺手优化之间的歧义
 
 架构支撑：
-- `prompt stack` 默认把请求理解成软件工程任务
-- `turn loop` 会围绕用户给出的目标、范围和验证要求持续推进
+- `prompt stack（提示词栈）` 默认把请求理解成软件工程任务
+- `turn loop（轮次循环）` 会围绕用户给出的目标、范围和验证要求持续推进
 
 源码依据：
 - [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
@@ -243,8 +261,8 @@ Report outcomes faithfully: if tests fail, say so ...
 - 能减少无关探索
 
 架构支撑：
-- `prompt stack` 明确要求先读代码
-- `Plan Mode workflow` 也要求先 explore，再规划或实现
+- `prompt stack（提示词栈）` 明确要求先读代码
+- `Plan Mode workflow（规划模式工作流）` 也要求先 explore，再规划或实现
 
 源码依据：
 - [prompts.ts#L230](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L230)
@@ -279,8 +297,8 @@ Look for existing functions, utilities, and patterns to reuse.
 - 能压住顺手重构和过早抽象
 
 架构支撑：
-- `prompt stack` 本身就在抑制范围漂移和不必要抽象
-- `tool pipeline` 更适合执行局部、清晰、可验证的改动
+- `prompt stack（提示词栈）` 本身就在抑制范围漂移和不必要抽象
+- `tool pipeline（工具执行流水线）` 更适合执行局部、清晰、可验证的改动
 
 源码依据：
 - [prompts.ts#L200](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L200)
@@ -300,7 +318,7 @@ Don't add features, refactor code, or make "improvements" beyond what was asked.
 Don't create helpers, utilities, or abstractions for one-time operations.
 ```
 
-## 8. 技巧 4：优先 dedicated tools，不要默认 Bash
+## 8. 技巧 4：优先 dedicated tools（专用工具），不要默认 Bash
 
 推荐写法：
 
@@ -313,7 +331,7 @@ Don't create helpers, utilities, or abstractions for one-time operations.
 - 专用工具更容易被解释和审查
 
 架构支撑：
-- `tool pipeline` 里 dedicated tools 是一等能力面
+- `tool pipeline（工具执行流水线）` 里 `dedicated tools（专用工具）` 是一等能力面
 - Bash 是更自由也更高风险的 fallback surface
 
 源码依据：
@@ -352,8 +370,8 @@ If the commands are independent and can run in parallel, make multiple Bash tool
 - 可以减少“看似完成、其实没验证”的风险
 
 架构支撑：
-- `prompt stack` 明确要求 verify 和 faithful reporting
-- `turn loop` 默认不会替用户假设“验证已经完成”
+- `prompt stack（提示词栈）` 明确要求 verify 和 faithful reporting
+- `turn loop（轮次循环）` 默认不会替用户假设“验证已经完成”
 
 源码依据：
 - [prompts.ts#L211](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L211)
@@ -385,8 +403,8 @@ Never claim "all tests pass" when output shows failures.
 - 这是系统默认的保守策略
 
 架构支撑：
-- `prompt stack` 先定义高风险动作的确认边界
-- `tool pipeline` 和 Bash 约束负责在执行面进一步收紧
+- `prompt stack（提示词栈）` 先定义高风险动作的确认边界
+- `tool pipeline（工具执行流水线）` 和 Bash 约束负责在执行面进一步收紧
 
 源码依据：
 - [prompts.ts#L258](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L258)
@@ -411,7 +429,7 @@ ask for confirmation before proceeding
 Only use destructive operations when they are truly the best approach.
 ```
 
-## 11. 技巧 7：独立查询可以显式允许 parallel
+## 11. 技巧 7：独立查询可以显式允许 parallel（并行）
 
 推荐写法：
 
@@ -423,8 +441,8 @@ Only use destructive operations when they are truly the best approach.
 - 系统原生鼓励独立工具调用并行化
 
 架构支撑：
-- `tool pipeline` 原生支持 independent tool calls 并行
-- `Plan Mode workflow` 也鼓励先并行探索，再收敛实现
+- `tool pipeline（工具执行流水线）` 原生支持 independent tool calls 并行
+- `Plan Mode workflow（规划模式工作流）` 也鼓励先并行探索，再收敛实现
 
 源码依据：
 - [prompts.ts#L310](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L310)
@@ -460,8 +478,8 @@ If the commands are independent and can run in parallel, make multiple Bash tool
 - 不要把高风险授权写得太模糊
 
 架构支撑：
-- 这些误区本质上都在对抗 `prompt stack` 的默认约束
-- 一旦输入方式偏离默认工作流，`turn loop` 的稳定性就更容易下降
+- 这些误区本质上都在对抗 `prompt stack（提示词栈）` 的默认约束
+- 一旦输入方式偏离默认工作流，`turn loop（轮次循环）` 的稳定性就更容易下降
 
 源码依据：
 - [prompts.ts#L221](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221)
@@ -500,6 +518,6 @@ ask for confirmation before proceeding
 1. 任务写成“目标 + 范围 + 约束 + 验证”
 2. 明确要求先读代码
 3. 明确要求最小改动、优先复用
-4. 优先 dedicated tools，不要默认 Bash
+4. 优先 dedicated tools（专用工具），不要默认 Bash
 5. 验证结果要如实汇报
 6. 高风险动作先确认
