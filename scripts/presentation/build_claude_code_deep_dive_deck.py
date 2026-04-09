@@ -457,6 +457,8 @@ def build_deck():
         ],
         ["src/main.tsx", "src/QueryEngine.ts", "src/query.ts", "src/services/tools/toolExecution.ts"],
         "装配、宿主、执行和控制面同时存在，才说明它更接近 runtime，而不是普通 CLI wrapper。",
+        "源码代码",
+        "export class QueryEngine {\n  private mutableMessages: Message[]\n}\n\ntype State = {\n  messages: Message[]\n  toolUseContext: ToolUseContext\n  transition: Continue | undefined\n}",
     )
     add_architecture_diagram_slide(prs)
     add_rich_slide(
@@ -557,6 +559,8 @@ def build_deck():
         ],
         ["src/query.ts"],
         "query.ts 围绕 messages、tool context 和 transition 反复推进，因此 loop 是文件真实形态，而不是分析者措辞。",
+        "源码代码",
+        "type State = {\n  messages: Message[]\n  toolUseContext: ToolUseContext\n  turnCount: number\n  transition: Continue | undefined\n}",
     )
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
@@ -585,6 +589,8 @@ def build_deck():
         ],
         ["src/utils/systemPrompt.ts", "src/utils/attachments.ts"],
         "用户写 prompt，不是在给静态聊天机器人发消息，而是在参与当前轮工作面的构造。",
+        "源码代码",
+        "function getCriticalSystemReminderAttachment(...) {\n  const reminder = toolUseContext.criticalSystemReminder_EXPERIMENTAL\n  if (!reminder) return []\n  return [{ type: 'critical_system_reminder', content: reminder }]\n}",
     )
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
@@ -615,6 +621,8 @@ def build_deck():
         ],
         ["src/utils/sessionStorage.ts", "src/utils/conversationRecovery.ts", "src/services/compact/compact.ts"],
         "长期工作是底层显式目标，而不是幸运地“刚好能跑很久”。",
+        "源码代码",
+        "const filteredToolUses = filterUnresolvedToolUses(migratedMessages)\nconst filteredThinking =\n  filterOrphanedThinkingOnlyMessages(filteredToolUses)",
     )
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
@@ -699,6 +707,8 @@ def build_deck():
         ],
         ["src/constants/prompts.ts", "src/services/tools/toolExecution.ts", "src/utils/sessionStorage.ts", "src/utils/messages.ts"],
         "稳定产出来自运行时结构，不只是模型强；这也是为什么用法会直接影响结果质量。",
+        "源码提示词",
+        "The user will primarily request you to perform software engineering tasks.",
     )
     add_rich_slide(
         prs.slides.add_slide(prs.slide_layouts[6]),
@@ -771,18 +781,18 @@ def build_deck():
         "源码理解到这里，应该被翻译成一套更有效的协作方式。",
     )
     advice_slides = [
-        ("为什么最后要单独讲“开发流程与协作建议”", "前面讲的是机制，这里讲的是怎样顺着机制组织工作。", "这一部分不是经验汇总，而是把 Prompt Stack、Tool Pipeline、Recovery 和 Task Runtime 的约束翻译成团队可执行的工作流。", ["如果停在架构和功能，听众很难把这些理解转化为日常使用方式。", "真正有价值的是：怎样写任务、怎样设边界、怎样做验证、怎样组织长任务。", "源码理解的最终落点，应该是更稳的协作实践。", "因此这部分是全场的落地收束，而不是附录。"], ["src/constants/prompts.ts", "src/services/tools/toolExecution.ts", "src/utils/task/framework.ts"], "前面的运行时机制越清楚，这里的建议越不是“拍脑袋”。"),
+        ("为什么最后要单独讲“开发流程与协作建议”", "前面讲的是机制，这里讲的是怎样顺着机制组织工作。", "这一部分不是经验汇总，而是把 Prompt Stack、Tool Pipeline、Recovery 和 Task Runtime 的约束翻译成团队可执行的工作流。", ["如果停在架构和功能，听众很难把这些理解转化为日常使用方式。", "真正有价值的是：怎样写任务、怎样设边界、怎样做验证、怎样组织长任务。", "源码理解的最终落点，应该是更稳的协作实践。", "因此这部分是全场的落地收束，而不是附录。"], ["src/constants/prompts.ts", "src/services/tools/toolExecution.ts", "src/utils/task/framework.ts"], "前面的运行时机制越清楚，这里的建议越不是“拍脑袋”。", "源码提示词", "Report outcomes faithfully...\n\nCarefully consider the reversibility and blast radius of actions."),
         ("建议一：把任务组织成工程任务，而不是聊天请求", "工程化任务表达，是 Claude Code 最自然的输入形式。", "任务至少应该写出目标、范围、约束和验证；这不是格式洁癖，而是顺着 Prompt Stack 的默认角色来组织输入。", ["目标定义它要完成什么。", "范围限制它改到哪里为止。", "约束决定它不能顺手做什么。", "验证决定这次工作如何收口。"], ["src/constants/prompts.ts"], "默认 system prompt 直接把用户请求定义成 software engineering tasks，因此任务越工程化，系统越接近默认最佳状态。", "源码提示词", "The user will primarily request you to perform software engineering tasks."),
         ("建议二：先读代码，再改代码", "显式要求先读关键文件，可以明显减少无关探索和错误改动。", "如果任务涉及真实代码库，就应该先要求它看关键文件、关键函数和现有实现，再决定怎么改。", ["这能降低没读就改、误解上下文和乱造新层的概率。", "对多文件任务尤其重要。", "关键文件点名越清楚，Claude Code 越容易快速进入正确工作面。", "这不是额外约束，而是它的默认偏好。"], ["src/constants/prompts.ts", "src/utils/messages.ts"], "“先读再改”已经写在提示词和 Plan Mode 工作流里，所以显式写出来会更稳。", "源码提示词", "In general, do not propose changes to code you haven't read."),
         ("建议三：最小改动，优先复用", "Claude Code 更适合在边界清楚时做局部、高质量推进。", "明确要求最小必要改动、优先复用现有函数和模式，可以明显抑制顺手重构与过早抽象。", ["这对局部修复、小功能和短周期改动尤其重要。", "系统默认就反对一锤子抽象和无边界优化。", "如果用户不写清楚，它容易把“顺便优化”当成合理延伸。", "越是成熟项目，越应该显式写这一层。"], ["src/constants/prompts.ts", "src/utils/messages.ts"], "最小改动和复用现有模式，是顺着默认 prompt 和搜索工作流在走。", "源码提示词", "Don't create helpers, utilities, or abstractions for one-time operations."),
         ("建议四：专用工具优先，Bash 后置", "可审查、可约束的执行路径，通常比自由 shell 更稳。", "Claude Code 并不是鼓励你默认走 shell；相反，它更偏好 Read、Edit、Glob、Grep 这类 dedicated tools。", ["专用工具更容易被 runtime 审查和记录。", "Bash 更强，但也更高风险。", "复杂执行需求可以把 Bash 留作兜底，而不是默认入口。", "对团队协作场景尤其如此。"], ["src/constants/prompts.ts", "src/tools/BashTool/prompt.ts", "src/tools/BashTool/BashTool.tsx"], "tool pipeline 和 BashTool 的安全层都说明：系统更偏好可审查的执行路径。", "源码提示词", "Do NOT use the Bash tool when a relevant dedicated tool is provided."),
         ("建议五：验证要单独要求，而且结果要如实汇报", "验证不是默认一定会发生，验证结果也不应该靠猜。", "如果任务需要改代码，就应该单独写出要跑什么验证、结果如何汇报、没跑时也要明确说明。", ["这能显著减少“看起来完成了，其实没有真正验证”的情况。", "验证方式越具体，Claude Code 越容易形成闭环。", "对长任务尤其重要，因为它让每个阶段都能有收口点。", "“如实汇报”是默认 prompt 已经明确写出的规则。"], ["src/constants/prompts.ts"], "用户把验证要求显式写出来，其实是在主动利用系统已有的结果约束。", "源码提示词", "Report outcomes faithfully..."),
         ("建议六：高风险动作一定要把确认规则写清楚", "边界越模糊，权限链就越容易放大不确定性。", "涉及删除、覆盖、push、外发、破坏性 git 操作时，最好单独写明确认方式和允许范围。", ["这不是过度谨慎，而是顺着 tool pipeline 和 permission chain 的工作方式。", "对高风险动作，Claude Code 天然会更保守。", "如果用户把授权写得含糊，系统和使用者都会处在不稳状态。", "最好把确认触发条件写成明确规则。"], ["src/constants/prompts.ts", "src/tools/BashTool/prompt.ts", "src/utils/permissions/permissions.ts"], "高风险动作在系统内部是单独对待的，所以用户也必须把这条边界显式表达。", "源码提示词", "Carefully consider the reversibility and blast radius of actions."),
-        ("建议七：复杂任务先走 Plan Mode", "先探索、再计划、后实现，比直接开干更稳。", "Plan Mode 的价值在于先快速扫关键文件、形成计划，再问缺失信息或进入执行。", ["对多模块任务、改动范围不确定的任务尤其适合。", "它能帮助系统先建立正确工作面，再开始改。", "也能降低一开始就误判方向的概率。", "Plan Mode 本身已经把这个节奏做成显式流程。"], ["src/utils/messages.ts"], "复杂任务之所以更适合 Plan Mode，不是经验，而是系统里已经存在这条 workflow。"),
-        ("建议八：独立查询允许并行，长任务允许分阶段推进", "Claude Code 天生适合把复杂工作拆成可并行、可阶段收口的部分。", "独立查询可以显式允许 parallel，长任务则更适合拆阶段、拆子任务和阶段性收口。", ["并行适合读代码、搜文件、比对多处实现。", "分阶段适合长任务、复杂任务和需要多轮验证的任务。", "这会明显提高输出稳定性，也降低上下文失控。", "task runtime 的存在，本来就在支持这种组织方式。"], ["src/utils/messages.ts", "src/utils/task/framework.ts"], "并行工具调用和 task runtime 都是系统一级能力，所以任务节奏设计会直接影响 Claude Code 的发挥。"),
-        ("建议九：哪些任务最适合直接交给 Claude Code", "不是所有任务都适合直接交给它；挑对任务，效果会明显不同。", "最适合的是局部修复、代码理解与定位、需要命令验证的任务，以及可分阶段推进的工程任务。", ["这类任务既需要工具，又需要解释和验证。", "它们边界相对清楚，容易形成阶段性结果。", "也更容易让 Claude Code 的主执行链稳定工作。", "从团队角度看，这类任务最容易形成可复查产出。"], ["src/query.ts", "src/services/tools/toolExecution.ts", "src/utils/task/framework.ts"], "这些任务正好贴合 prompt stack、tool pipeline、task runtime 和 recovery 的优势区间。"),
-        ("建议十：哪些任务要谨慎交给 Claude Code", "越依赖隐性边界和模糊背景的任务，越需要先结构化。", "完全模糊的探索、范围极大的全局改动、高风险但边界不清的动作，都不适合直接硬交给 Claude Code。", ["它不是不能做，而是这类任务更容易让工作面漂移。", "此时最好的办法通常不是强行让它“自己想明白”。", "而是先补边界、先拆任务、先确认风险。", "这样才能把任务重新拉回 Claude Code 的优势区间。"], ["src/constants/prompts.ts", "src/services/tools/toolExecution.ts", "src/utils/permissions/permissions.ts"], "不适合直接硬做，不是因为模型弱，而是因为 runtime 对这些任务的稳定工作面本来就更难建立。"),
-        ("团队协作时，应该把 Claude Code 当成什么角色", "从团队视角看，Claude Code 更像协作型工程执行体，而不是聊天机器人。", "它最适合承担工程代理、多阶段任务推进器、带工具的验证者，以及文档、代码、验证结果的联合产出器。", ["它能同时做阅读、执行、验证和阶段性结论。", "它适合在明确边界下持续推进。", "它也适合做带证据链的中间产出。", "这比“让它回答问题”更接近它的真实强项。"], ["src/commands.ts", "src/utils/messages.ts", "src/utils/task/framework.ts", "src/QueryEngine.ts"], "commands、Plan Mode、task runtime、structured output 和 tool pipeline 都说明它更适合作为协作型工程执行体。"),
+        ("建议七：复杂任务先走 Plan Mode", "先探索、再计划、后实现，比直接开干更稳。", "Plan Mode 的价值在于先快速扫关键文件、形成计划，再问缺失信息或进入执行。", ["对多模块任务、改动范围不确定的任务尤其适合。", "它能帮助系统先建立正确工作面，再开始改。", "也能降低一开始就误判方向的概率。", "Plan Mode 本身已经把这个节奏做成显式流程。"], ["src/utils/messages.ts"], "复杂任务之所以更适合 Plan Mode，不是经验，而是系统里已经存在这条 workflow。", "源码提示词", "Start by quickly scanning a few key files.\nUpdate the plan.\nAsk the user only about information the code cannot answer."),
+        ("建议八：独立查询允许并行，长任务允许分阶段推进", "Claude Code 天生适合把复杂工作拆成可并行、可阶段收口的部分。", "独立查询可以显式允许 parallel，长任务则更适合拆阶段、拆子任务和阶段性收口。", ["并行适合读代码、搜文件、比对多处实现。", "分阶段适合长任务、复杂任务和需要多轮验证的任务。", "这会明显提高输出稳定性，也降低上下文失控。", "task runtime 的存在，本来就在支持这种组织方式。"], ["src/utils/messages.ts", "src/utils/task/framework.ts"], "并行工具调用和 task runtime 都是系统一级能力，所以任务节奏设计会直接影响 Claude Code 的发挥。", "源码提示词", "If there are no dependencies between them, make all independent tool calls in parallel."),
+        ("建议九：哪些任务最适合直接交给 Claude Code", "不是所有任务都适合直接交给它；挑对任务，效果会明显不同。", "最适合的是局部修复、代码理解与定位、需要命令验证的任务，以及可分阶段推进的工程任务。", ["这类任务既需要工具，又需要解释和验证。", "它们边界相对清楚，容易形成阶段性结果。", "也更容易让 Claude Code 的主执行链稳定工作。", "从团队角度看，这类任务最容易形成可复查产出。"], ["src/query.ts", "src/services/tools/toolExecution.ts", "src/utils/task/framework.ts"], "这些任务正好贴合 prompt stack、tool pipeline、task runtime 和 recovery 的优势区间。", "源码代码", "type State = {\n  messages: Message[]\n  toolUseContext: ToolUseContext\n  turnCount: number\n  transition: Continue | undefined\n}"),
+        ("建议十：哪些任务要谨慎交给 Claude Code", "越依赖隐性边界和模糊背景的任务，越需要先结构化。", "完全模糊的探索、范围极大的全局改动、高风险但边界不清的动作，都不适合直接硬交给 Claude Code。", ["它不是不能做，而是这类任务更容易让工作面漂移。", "此时最好的办法通常不是强行让它“自己想明白”。", "而是先补边界、先拆任务、先确认风险。", "这样才能把任务重新拉回 Claude Code 的优势区间。"], ["src/constants/prompts.ts", "src/services/tools/toolExecution.ts", "src/utils/permissions/permissions.ts"], "不适合直接硬做，不是因为模型弱，而是因为 runtime 对这些任务的稳定工作面本来就更难建立。", "源码提示词", "Don't add features, refactor code, or make improvements beyond what was explicitly asked."),
+        ("团队协作时，应该把 Claude Code 当成什么角色", "从团队视角看，Claude Code 更像协作型工程执行体，而不是聊天机器人。", "它最适合承担工程代理、多阶段任务推进器、带工具的验证者，以及文档、代码、验证结果的联合产出器。", ["它能同时做阅读、执行、验证和阶段性结论。", "它适合在明确边界下持续推进。", "它也适合做带证据链的中间产出。", "这比“让它回答问题”更接近它的真实强项。"], ["src/commands.ts", "src/utils/messages.ts", "src/utils/task/framework.ts", "src/QueryEngine.ts"], "commands、Plan Mode、task runtime、structured output 和 tool pipeline 都说明它更适合作为协作型工程执行体。", "源码提示词", "You are running as an agent in a team.\nUse the SendMessage tool."),
         ("总结：怎样把源码理解真正转化成更好的使用方式", "所有高质量技巧的共同点，不是“更会写 prompt”，而是“更顺着系统工作方式组织任务”。", "先用少量源码理解建立正确模型，再把重心放到产出、使用方式和任务组织上，才是更高价值的 Claude Code 使用方式。", ["先建立最小必要架构模型。", "再理解一次请求如何流过系统。", "再根据产出形态挑任务、定边界、设验证。", "最后把建议落成团队协作方式。"], ["docs/zh/09-Claude Code 源码深度解读-文档.md", "docs/zh/10-Claude Code 源码深度解读-分享提纲.md"], "真正有效的技巧，都可以回到运行时机制解释；这也是这场分享和经验贴的区别。"),
     ]
     for args in advice_slides:
