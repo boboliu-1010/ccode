@@ -299,7 +299,7 @@ def add_overview_diagram(prs: Presentation, sd: SlideData):
     q = parse_bullets(sd.fields.get('这一页要回答的问题', ''))
     if q:
         add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 0.62, 1.55, 12.02, 0.58, fill=PANEL_3, line=ACCENT)
-        add_text(slide, 0.82, 1.72, 11.6, 0.22, q, size=14.5, bullet=False)
+        add_text(slide, 0.84, 1.72, 11.55, 0.22, q, size=14.5, bullet=False)
     boxes = [
         ('用户输入', 0.78, 2.55, 1.55, 0.7, ACCENT),
         ('Prompt Stack\n提示词栈', 2.6, 2.48, 1.95, 0.84, ACCENT),
@@ -350,7 +350,7 @@ def add_overview_diagram(prs: Presentation, sd: SlideData):
     connect(slide, 10.82, 3.36, 10.82, 4.38, ACCENT_3)
     takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
     if takeaway:
-        add_panel(slide, 0.82, 6.08, 11.85, 0.72, '这一页想说明什么', title_color=ACCENT)
+        add_panel(slide, 0.82, 6.08, 11.85, 0.72, '关键结论', title_color=ACCENT)
         add_text(slide, 1.04, 6.38, 11.35, 0.2, takeaway, size=14.5, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', '总体架构')
 
@@ -362,7 +362,7 @@ def add_workflow_diagram(prs: Presentation, sd: SlideData):
     q = parse_bullets(sd.fields.get('这一页要回答的问题', ''))
     if q:
         add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 0.62, 1.55, 12.02, 0.58, fill=PANEL_3, line=ACCENT)
-        add_text(slide, 0.82, 1.72, 11.6, 0.22, q, size=14.5, bullet=False)
+        add_text(slide, 0.84, 1.72, 11.55, 0.22, q, size=14.5, bullet=False)
     steps = [
         ('用户输入', 0.82, 2.55, 1.45),
         ('装配环境', 2.45, 2.55, 1.5),
@@ -415,7 +415,7 @@ def add_capability_slide(prs: Presentation, sd: SlideData):
         add_panel(slide, x, y, 2.05, 1.6, title, title_color=color)
         add_text(slide, x+0.08, y+0.37, 1.9, 1.1, items, size=12.6)
     takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
-    add_panel(slide, 0.86, 6.15, 11.8, 0.65, '这一页想说明什么', title_color=ACCENT_3)
+    add_panel(slide, 0.86, 6.15, 11.8, 0.65, '关键结论', title_color=ACCENT_3)
     add_text(slide, 1.06, 6.42, 11.35, 0.2, takeaway or ['功能多本身不重要，关键是这些能力能围绕主执行链协同。'], size=14.2, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', '功能介绍')
 
@@ -445,9 +445,9 @@ def generic_slide(prs: Presentation, sd: SlideData):
     code = parse_code(sd.fields.get('关键代码片段', ''))
 
     if question:
-        add_panel(slide, 0.62, 1.5, 12.02, 0.78, '这一页要回答的问题', title_color=ACCENT)
-        add_text(slide, 0.82, 1.85, 11.6, 0.25, question, size=14.5, bullet=False)
-        top_y = 2.48
+        add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 0.62, 1.5, 12.02, 0.68, fill=PANEL_3, line=ACCENT)
+        add_text(slide, 0.84, 1.77, 11.55, 0.2, question, size=14.5, bullet=False)
+        top_y = 2.38
     else:
         top_y = 1.55
 
@@ -466,12 +466,12 @@ def generic_slide(prs: Presentation, sd: SlideData):
         add_panel(slide, 7.82, top_y+2.12, 4.8, 1.83, '这段代码说明什么', title_color=ACCENT_3)
         add_text(slide, 8.02, top_y+2.48, 4.4, 1.38, insight[:4] or ['这段代码支撑了当前页的判断。'], size=13.2)
     else:
-        add_panel(slide, 7.82, top_y, 4.8, 2.22, '代码理解支撑', title_color=ACCENT_3)
+        add_panel(slide, 7.82, top_y, 4.8, 2.22, '实现逻辑', title_color=ACCENT_3)
         add_text(slide, 8.02, top_y+0.38, 4.4, 1.72, insight[:5] or ['这页主要是概览，不强行上代码块。'], size=13.2)
-        add_panel(slide, 7.82, top_y+2.42, 4.8, 1.53, '源码依据', title_color=ACCENT)
+        add_panel(slide, 7.82, top_y+2.42, 4.8, 1.53, '相关模块', title_color=ACCENT)
         add_text(slide, 8.02, top_y+2.78, 4.35, 1.08, sources[:4] or ['本页无单独源码列表'], size=11.6)
 
-    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '希望听众带走什么', title_color=WARN, fill=PANEL_3)
+    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '关键结论', title_color=WARN, fill=PANEL_3)
     add_text(slide, 0.84, 6.83, 11.58, 0.18, takeaway or ['本页的重点是建立正确心智模型。'], size=14.2, bullet=False)
     footer_right = ' / '.join(sources[:4])
     add_footer(slide, 'Claude Code 源码调研', footer_right)
@@ -483,9 +483,9 @@ def function_slide(prs: Presentation, sd: SlideData):
     add_title(slide, sd.title, '功能 / 实现原理 / 使用技巧 / 代码理解')
     question = parse_bullets(sd.fields.get('这一页要回答的问题', ''))
     if question:
-        add_panel(slide, 0.62, 1.5, 12.02, 0.78, '这一页要回答的问题', title_color=ACCENT)
-        add_text(slide, 0.82, 1.85, 11.6, 0.25, question, size=14.5, bullet=False)
-        top_y = 2.48
+        add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 0.62, 1.5, 12.02, 0.68, fill=PANEL_3, line=ACCENT)
+        add_text(slide, 0.84, 1.77, 11.55, 0.2, question, size=14.5, bullet=False)
+        top_y = 2.38
     else:
         top_y = 1.55
     add_panel(slide, 0.62, top_y, 3.92, 1.35, '功能', title_color=ACCENT)
@@ -502,12 +502,12 @@ def function_slide(prs: Presentation, sd: SlideData):
         add_panel(slide, 8.02, top_y+2.28, 4.62, 1.42, '这段代码说明什么', title_color=WARN)
         add_text(slide, 8.2, top_y+2.62, 4.22, 0.94, insight[:4], size=12.8)
     else:
-        add_panel(slide, 8.02, top_y, 4.62, 2.0, '代码理解支撑', title_color=WARN)
+        add_panel(slide, 8.02, top_y, 4.62, 2.0, '实现逻辑', title_color=WARN)
         add_text(slide, 8.2, top_y+0.38, 4.22, 1.46, insight[:5], size=12.8)
-        add_panel(slide, 8.02, top_y+2.18, 4.62, 1.52, '源码依据', title_color=ACCENT)
+        add_panel(slide, 8.02, top_y+2.18, 4.62, 1.52, '相关模块', title_color=ACCENT)
         add_text(slide, 8.2, top_y+2.54, 4.22, 1.0, sources[:4] or ['本页无单独源码列表'], size=11.4)
     takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
-    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '希望听众带走什么', title_color=WARN, fill=PANEL_3)
+    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '关键结论', title_color=WARN, fill=PANEL_3)
     add_text(slide, 0.84, 6.83, 11.58, 0.18, takeaway or ['理解机制之后，才能推出更稳定的使用方式。'], size=14.0, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', ' / '.join(sources[:4]))
 
