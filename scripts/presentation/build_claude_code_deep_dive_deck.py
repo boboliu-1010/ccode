@@ -199,17 +199,19 @@ def connect(slide, x1, y1, x2, y2, color=ACCENT):
     return line
 
 
-def add_rich_slide(slide, title, subtitle, thesis, bullets, sources, insight, code_label=None, code=None):
+def add_rich_slide(slide, title, subtitle, thesis, bullets, refs, insight, code_label=None, code=None):
     add_bg(slide)
     add_title(slide, title, subtitle)
     add_thesis_box(slide, thesis)
     add_panel(slide, 0.62, 2.58, 7.0, 3.98, "核心内容")
     add_text_block(slide, 0.78, 2.96, 6.7, 3.56, bullets, size=16.5)
-    add_source_box(slide, 7.82, 2.58, 4.8, 1.38, "代码支撑", sources)
-    add_source_box(slide, 7.82, 5.32, 4.8, 1.24, "代码理解支撑", [insight], color=ACCENT_2)
     if code:
-        add_code_box(slide, 7.82, 4.08, 4.8, 1.08, code_label or "源码代码", code)
-    add_footer(slide, "Claude Code 源码深度解读")
+        add_code_box(slide, 7.82, 2.58, 4.8, 1.7, code_label or "源码代码", code)
+        add_source_box(slide, 7.82, 4.44, 4.8, 2.12, "这段代码说明了什么", [insight], color=ACCENT_2)
+    else:
+        add_source_box(slide, 7.82, 2.58, 4.8, 3.98, "源码理解支撑", [insight], color=ACCENT_2)
+    ref_text = "相关实现：" + " / ".join(refs[:4]) if refs else None
+    add_footer(slide, "Claude Code 源码深度解读", ref_text)
 
 
 def add_cover(prs):
