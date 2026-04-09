@@ -207,9 +207,10 @@ def add_rich_slide(slide, title, subtitle, thesis, bullets, refs, insight, code_
     add_text_block(slide, 0.78, 2.96, 6.7, 3.56, bullets, size=16.5)
     if code:
         add_code_box(slide, 7.82, 2.58, 4.8, 1.7, code_label or "源码代码", code)
-        add_source_box(slide, 7.82, 4.44, 4.8, 2.12, "这段代码说明了什么", [insight], color=ACCENT_2)
+        add_source_box(slide, 7.82, 4.44, 4.8, 2.12, "这段代码说明什么", [insight], color=ACCENT_2)
     else:
-        add_source_box(slide, 7.82, 2.58, 4.8, 3.98, "源码理解支撑", [insight], color=ACCENT_2)
+        add_panel(slide, 7.82, 2.58, 4.8, 3.98, "实践含义", title_color=ACCENT_2)
+        add_text_block(slide, 7.98, 2.96, 4.46, 3.5, [insight], size=17, color=TEXT, bullet=False)
     ref_text = "相关实现：" + " / ".join(refs[:4]) if refs else None
     add_footer(slide, "Claude Code 源码深度解读", ref_text)
 
