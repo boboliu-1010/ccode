@@ -118,6 +118,21 @@
 - [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
 - [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
 
+**关键代码片段**
+
+```ts
+export class QueryEngine {
+  private mutableMessages: Message[]
+  private totalUsage: NonNullableUsage
+}
+
+type State = {
+  messages: Message[]
+  toolUseContext: ToolUseContext
+  transition: Continue | undefined
+}
+```
+
 **代码理解支撑**
 - 只有当装配、宿主、执行和控制面同时存在时，才更接近 runtime，而不是普通 CLI wrapper。
 
@@ -223,6 +238,17 @@ type State = {
 - [src/services/policyLimits/index.ts](/Users/bobo/code/claude-code-source-code/src/services/policyLimits/index.ts)
 - [src/utils/systemPrompt.ts](/Users/bobo/code/claude-code-source-code/src/utils/systemPrompt.ts)
 
+**关键代码片段**
+
+```ts
+export function buildEffectiveSystemPrompt({
+  customSystemPrompt,
+  defaultSystemPrompt,
+  appendSystemPrompt,
+  overrideSystemPrompt,
+}: ...): SystemPrompt
+```
+
 **代码理解支撑**
 - 这些模块都能直接影响工具可用性、组织限制和系统行为，因此“边界”不是口头说说，而是代码里的真实裁决链。
 
@@ -258,6 +284,16 @@ type State = {
 - 先过 settings / auth / policy
 - 构造 tools / commands / app state
 - 然后才进入 `QueryEngine` 和 `query.ts`
+
+**关键代码片段**
+
+```ts
+// Persist the user's message(s) to transcript BEFORE entering the query loop.
+if (persistSession && messagesFromUserInput.length > 0) {
+  const transcriptPromise = recordTranscript(messages)
+  ...
+}
+```
 
 **代码理解支撑**
 - 在 `main.tsx` 和 `QueryEngine.ts` 里，请求处理明显早于模型调用就已经开始。
@@ -321,6 +357,18 @@ type State = {
   - stop hook
   - reactive compact
 
+**关键代码片段**
+
+```ts
+type State = {
+  ...
+  hasAttemptedReactiveCompact: boolean
+  maxOutputTokensRecoveryCount: number
+  stopHookActive: boolean | undefined
+  transition: Continue | undefined
+}
+```
+
 **代码理解支撑**
 - 这些迁移分支都在 `query.ts` 的状态推进逻辑里，是正向路径的一部分。
 
@@ -344,6 +392,18 @@ type State = {
 - [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
 - [src/utils/systemPrompt.ts](/Users/bobo/code/claude-code-source-code/src/utils/systemPrompt.ts)
 
+**关键代码片段**
+
+```ts
+function getCriticalSystemReminderAttachment(
+  toolUseContext: ToolUseContext,
+): Attachment[] {
+  const reminder = toolUseContext.criticalSystemReminder_EXPERIMENTAL
+  if (!reminder) return []
+  return [{ type: 'critical_system_reminder', content: reminder }]
+}
+```
+
 **代码理解支撑**
 - attachments 和 system prompt sections 都是按 turn 重新拼接的，这直接解释了为什么 Claude Code 的上下文表现和普通聊天工具不同。
 
@@ -366,6 +426,18 @@ type State = {
 
 **代码支撑**
 - [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+
+**关键代码片段**
+
+```ts
+const parsedInput = tool.inputSchema.safeParse(input)
+...
+runPreToolUseHooks(...)
+...
+resolveHookPermissionDecision(...)
+...
+tool.call(...)
+```
 
 **代码理解支撑**
 - 这条链说明 Claude Code 最在意的是“动作如何被审查和约束”，而不是最快把命令打出去。
@@ -430,6 +502,16 @@ type State = {
 - [src/tools.ts](/Users/bobo/code/claude-code-source-code/src/tools.ts)
 - [src/services/mcp/client.ts](/Users/bobo/code/claude-code-source-code/src/services/mcp/client.ts)
 - [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
+
+**关键代码片段**
+
+```ts
+// built-ins as a contiguous prefix
+return uniqBy(
+  [...builtInTools].sort(byName).concat(allowedMcpTools.sort(byName)),
+  'name',
+)
+```
 
 **代码理解支撑**
 - commands、tools、MCP、policy、recovery、profiling 分布在不同模块里，但它们共同服务的是一条主执行链，因此从功能面而不是目录切入，更能帮助用户理解“Claude Code 到底能帮我完成什么”。
@@ -525,6 +607,19 @@ case 'progress':
 - [src/utils/plugins/pluginLoader.ts](/Users/bobo/code/claude-code-source-code/src/utils/plugins/pluginLoader.ts)
 - [src/services/policyLimits/index.ts](/Users/bobo/code/claude-code-source-code/src/services/policyLimits/index.ts)
 
+**关键代码片段**
+
+```ts
+return asSystemPrompt([
+  ...(agentSystemPrompt
+    ? [agentSystemPrompt]
+    : customSystemPrompt
+      ? [customSystemPrompt]
+      : defaultSystemPrompt),
+  ...(appendSystemPrompt ? [appendSystemPrompt] : []),
+])
+```
+
 **代码理解支撑**
 - 扩展模块和控制模块在代码里是分离的，这意味着 Claude Code 不是简单地“能接更多工具”，而是能在能力增长的同时保住边界与可治理性。
 
@@ -554,6 +649,16 @@ case 'progress':
 - [src/utils/conversationRecovery.ts](/Users/bobo/code/claude-code-source-code/src/utils/conversationRecovery.ts)
 - [src/utils/queryProfiler.ts](/Users/bobo/code/claude-code-source-code/src/utils/queryProfiler.ts)
 - [src/utils/analyzeContext.ts](/Users/bobo/code/claude-code-source-code/src/utils/analyzeContext.ts)
+
+**关键代码片段**
+
+```ts
+const filteredToolUses = filterUnresolvedToolUses(migratedMessages)
+const filteredThinking =
+  filterOrphanedThinkingOnlyMessages(filteredToolUses)
+const filteredMessages =
+  filterWhitespaceOnlyAssistantMessages(filteredThinking)
+```
 
 **代码理解支撑**
 - 这些模块单独存在，说明 Claude Code 把“长任务续航”和“运行时诊断”视作一等能力，而不是出现问题后的补丁。
@@ -843,6 +948,21 @@ export type ContentReplacementState = {
 - [src/utils/skills/loadSkillsDir.ts](/Users/bobo/code/claude-code-source-code/src/utils/skills/loadSkillsDir.ts)
 - [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
 
+**关键代码片段**
+
+```ts
+export function createSkillCommand({...}): Command {
+  return {
+    type: 'prompt',
+    name: skillName,
+    allowedTools,
+    whenToUse,
+    model,
+    effort,
+  }
+}
+```
+
 **使用技巧**
 - skill 更适合用于有明显任务边界的场景。
 - 它不是一段“快捷短语”，而是一种能力面提示。
@@ -868,6 +988,12 @@ export type ContentReplacementState = {
 
 **代码支撑**
 - [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
+
+**关键代码片段**
+
+```ts
+return [{ type: 'relevant_memories' as const, memories }]
+```
 
 **使用技巧**
 - 不要把 Claude Code 当“只看聊天记录”的系统。
@@ -896,6 +1022,15 @@ export type ContentReplacementState = {
 - [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
 - [src/utils/permissions/permissions.ts](/Users/bobo/code/claude-code-source-code/src/utils/permissions/permissions.ts)
 
+**关键代码片段**
+
+```ts
+if (appState.toolPermissionContext.mode === 'auto') {
+  ...
+  classifierResult = await classifyYoloAction(...)
+}
+```
+
 **使用技巧**
 - 高风险动作要写清楚。
 - 模糊授权会显著放大不确定性。
@@ -923,6 +1058,19 @@ export type ContentReplacementState = {
 - [src/Task.ts](/Users/bobo/code/claude-code-source-code/src/Task.ts)
 - [src/utils/task/framework.ts](/Users/bobo/code/claude-code-source-code/src/utils/task/framework.ts)
 - [src/tools/AgentTool/runAgent.ts](/Users/bobo/code/claude-code-source-code/src/tools/AgentTool/runAgent.ts)
+
+**关键代码片段**
+
+```ts
+export function registerTask(task: TaskState, setAppState: SetAppState): void {
+  ...
+  enqueueSdkEvent({
+    type: 'system',
+    subtype: 'task_started',
+    task_id: task.id,
+  })
+}
+```
 
 **使用技巧**
 - 复杂任务适合拆成阶段或子任务。
@@ -1003,6 +1151,19 @@ export type ContentReplacementState = {
   - 可验证
   - 可继续推进
 
+**关键代码片段**
+
+```ts
+addFunctionHook(
+  setAppState,
+  sessionId,
+  'Stop',
+  '',
+  messages => hasSuccessfulToolCall(messages, SYNTHETIC_OUTPUT_TOOL_NAME),
+  `You MUST call the ${SYNTHETIC_OUTPUT_TOOL_NAME} tool to complete this request. Call this tool now.`,
+)
+```
+
 **代码理解支撑**
 - commands、Edit/Read/Bash、structured output、Plan Mode、task runtime 在代码里都明确存在，说明它默认就围绕工程结果设计。
 
@@ -1064,6 +1225,14 @@ export type ContentReplacementState = {
 - [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
 - [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
 - [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
+
+**关键代码片段**
+
+```ts
+The user will primarily request you to perform software engineering tasks.
+...
+Report outcomes faithfully...
+```
 
 **代码理解支撑**
 - 角色定义、执行链、续航链和任务链一起存在，决定了 Claude Code 更容易产出“工作结果”，而不是发散回答。
@@ -1251,6 +1420,14 @@ Carefully consider the reversibility and blast radius of actions.
 **代码支撑**
 - [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
 
+**关键代码片段**
+
+```ts
+Explore — Use the tools available to you to learn about the codebase...
+Update the plan file with a clear plan.
+Ask the user questions, but only if necessary.
+```
+
 **代码理解支撑**
 - Plan workflow 明确把“探索现有实现、更新计划、再问缺失信息”做成了独立流程，这正是复杂任务更稳的原因。
 
@@ -1270,6 +1447,14 @@ Carefully consider the reversibility and blast radius of actions.
 **代码支撑**
 - [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
 - [src/utils/task/framework.ts](/Users/bobo/code/claude-code-source-code/src/utils/task/framework.ts)
+
+**关键代码片段**
+
+```ts
+You can call multiple tools in a single response.
+If you intend to call multiple tools and there are no dependencies between them,
+make all independent tool calls in parallel.
+```
 
 **代码理解支撑**
 - 并行工具调用和 task runtime 都是系统一级能力，因此任务节奏设计会直接影响 Claude Code 的发挥。
@@ -1325,6 +1510,13 @@ Carefully consider the reversibility and blast radius of actions.
 - 文档、代码、验证结果的联合产出器
 - 而不是“替代所有人判断”的黑盒执行者
 
+**关键代码片段**
+
+```ts
+Just writing a response in text is not visible to others on your team -
+you MUST use the SendMessage tool.
+```
+
 **代码理解支撑**
 - commands、Plan Mode、task runtime、structured output、tool pipeline 都说明它更适合作为“协作型工程执行体”，而不是单纯聊天机器人。
 
@@ -1361,6 +1553,14 @@ Carefully consider the reversibility and blast radius of actions.
 - 续航与恢复：`sessionStorage.ts`、`conversationRecovery.ts`、`compact/*`
 - 扩展与控制：settings、auth、policy、MCP、plugins、skills
 - 这套代码最适合按“运行链 + 控制链”来阅读。
+
+**关键代码片段**
+
+```ts
+export class QueryEngine { ... }
+type State = { ... }
+export async function executeToolCalls(...) { ... }
+```
 
 **代码理解支撑**
 - Claude Code 的目录层次和运行时层次不完全一致，因此读代码时要优先遵循执行链，而不是只看文件夹结构。
