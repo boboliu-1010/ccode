@@ -279,7 +279,7 @@ def add_architecture_slide(prs):
 def add_overview(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
-    add_title(slide, "总结构图：Claude Code 的主执行链", "terminal agent runtime（终端代理运行时）视角")
+    add_title(slide, "UML 总览图：Claude Code 的主执行链", "terminal agent runtime（终端代理运行时）视角")
 
     add_panel(slide, 0.7, 1.85, 1.85, 1.0, "用户输入", ["User Prompt", "用户输入"], title_fill=PANEL_HDR)
     add_panel(slide, 2.8, 1.85, 2.05, 1.0, "提示词栈", ["Prompt Stack", "默认行为约束"], title_fill=PANEL_HDR)
@@ -303,6 +303,55 @@ def add_overview(prs):
     add_note(
         slide,
         "一句话：用户技巧之所以有效，是因为它们在影响 prompt stack（提示词栈）→ turn loop（轮次循环）→ tool pipeline（工具执行流水线）这条主链。",
+    )
+
+
+def add_sequence_slide(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide, BG)
+    add_title(slide, "时序图：一次请求如何流过 Claude Code", "用一条 request → tool → result 链解释用户提示词为什么有效")
+
+    lanes = [
+        ("User", 0.8),
+        ("Prompt Stack", 3.0),
+        ("QueryEngine", 5.1),
+        ("query.ts", 7.2),
+        ("Tool Pipeline", 9.3),
+        ("Tools", 11.15),
+    ]
+
+    for name, x in lanes:
+        add_panel(slide, x, 1.6, 1.45, 0.7, name, [], title_fill=PANEL_HDR)
+        line = slide.shapes.add_connector(
+            MSO_CONNECTOR.STRAIGHT, Inches(x + 0.72), Inches(2.28), Inches(x + 0.72), Inches(5.95)
+        )
+        line.line.color.rgb = LINE
+        line.line.width = Pt(1.0)
+
+    def seq(x1, x2, y, text):
+        connect(slide, x1, y, x2, y)
+        bx = min(x1, x2) + 0.12
+        bw = max(0.9, abs(x2 - x1) - 0.24)
+        add_plain_box(slide, bx, y - 0.16, bw, 0.32, [text], fill=PANEL_HDR, line_color=ACCENT, size=11)
+
+    seq(1.52, 3.72, 2.7, "任务输入 / 约束")
+    seq(3.72, 5.82, 3.15, "组装 prompt 与 context")
+    seq(5.82, 7.92, 3.6, "启动 turn loop")
+    seq(7.92, 10.02, 4.05, "决定是否调用工具")
+    seq(10.02, 11.87, 4.5, "执行 tool")
+    seq(11.87, 10.02, 4.95, "tool result")
+    seq(10.02, 7.92, 5.4, "回灌 messages")
+
+    add_plain_box(
+        slide,
+        1.2,
+        6.18,
+        11.0,
+        0.56,
+        ["结论：目标、范围、约束、验证写得越清楚，越能稳定影响 prompt stack、turn loop 和 tool pipeline 的每一步。"],
+        fill=ACCENT_SOFT,
+        line_color=ACCENT,
+        size=14,
     )
 
 
@@ -354,6 +403,7 @@ def build():
     )
 
     add_architecture_slide(prs)
+    add_sequence_slide(prs)
 
     add_content(
         prs,
