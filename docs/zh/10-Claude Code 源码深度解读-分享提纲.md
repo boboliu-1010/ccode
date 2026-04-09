@@ -14,7 +14,7 @@
 - [06-走读附录：长会话与恢复机制.md](/Users/bobo/code/claude-code-source-code/docs/zh/06-走读附录：长会话与恢复机制.md)
 - [07-走读附录：配置、认证与扩展系统.md](/Users/bobo/code/claude-code-source-code/docs/zh/07-走读附录：配置、认证与扩展系统.md)
 - [08-走读附录：Claude Code 使用技巧.md](/Users/bobo/code/claude-code-source-code/docs/zh/08-走读附录：Claude%20Code%20使用技巧.md)
-- [09-Claude Code 使用技巧与注意事项.md](/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude%20Code%20使用技巧与注意事项.md)
+- [09-Claude Code 源码深度解读-文档.md](/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude%20Code%20源码深度解读-文档.md)
 
 ## 分享总体建议
 
@@ -487,9 +487,9 @@ type State = {
 实现原理：
 - default prompt、override prompt、agent prompt、coordinator prompt、dynamic sections 叠加
 
-使用技巧：
-- 用户要把任务写得像工程任务
-- 约束要明确写出来
+实践含义：
+- 这说明 Claude Code 的默认角色是软件工程代理，而不是自由聊天助手
+- 这也解释了为什么明确约束、范围和验证要求会显著提高稳定性
 
 源码依据：
 - [src/utils/systemPrompt.ts](/Users/bobo/code/claude-code-source-code/src/utils/systemPrompt.ts)
@@ -509,9 +509,9 @@ The user will primarily request you to perform software engineering tasks.
 实现原理：
 - 维护 state、transition、toolUseContext、recovery 分支
 
-使用技巧：
-- 输入越清晰，loop 越稳定
-- 任务越能被分解成明确工具步骤，效果越好
+实践含义：
+- 这说明 Claude Code 更擅长“可被分解并可继续推进”的任务，而不是一次性含混请求
+- 也说明主循环稳定性高度依赖任务边界是否清晰
 
 源码依据：
 - [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
@@ -537,9 +537,9 @@ type State = {
 实现原理：
 - schema parse -> validate -> hooks -> permissions -> call -> post process
 
-使用技巧：
-- 优先 dedicated tools
-- 不要默认让模型走 Bash
+实践含义：
+- 这说明 runtime 倾向于把动作放进可审查、可约束的执行链，而不是交给自由 shell
+- 这也是专用工具优先于 Bash 的根本原因
 
 源码依据：
 - [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
@@ -564,9 +564,9 @@ tool.call(...)
 实现原理：
 - sandbox、只读识别、路径校验、破坏性判断、长输出处理
 
-使用技巧：
-- 能用专用工具就别先走 Bash
-- 破坏性操作需要显式确认
+实践含义：
+- 这说明 BashTool 是最强但风险最高的执行能力
+- 也说明破坏性操作必须被单独对待，而不是混进普通执行路径
 
 源码依据：
 - [src/tools/BashTool/BashTool.tsx](/Users/bobo/code/claude-code-source-code/src/tools/BashTool/BashTool.tsx)
@@ -580,9 +580,9 @@ tool.call(...)
 实现原理：
 - microcompact、autocompact、reactive compact、summary + attachments 重建工作面
 
-使用技巧：
-- 理解 compact 后不是“失忆”，而是工作面重建
-- 长任务要接受上下文会被重构
+实践含义：
+- 这说明 Claude Code 的长任务续航不是靠无限上下文，而是靠周期性重建工作面
+- compact 的存在本身就是它面向长期工作的信号
 
 源码依据：
 - [src/services/compact/compact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/compact.ts)
@@ -596,8 +596,8 @@ tool.call(...)
 实现原理：
 - transcript 链、parentUuid、orphan recovery、synthetic continuation
 
-使用技巧：
-- 长任务和断点续做是被系统认真支持的，不只是 UI 假象
+实践含义：
+- 这说明“中断后继续”在 Claude Code 里是 runtime 能力，不是前端体验幻觉
 
 源码依据：
 - [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
@@ -619,9 +619,9 @@ const filteredThinking =
 实现原理：
 - 大结果落盘、preview replacement、fate freezing、resume replay
 
-使用技巧：
-- 不要把工具返回当成必须全部保留在上下文里
-- Claude Code 的长任务稳定性很大程度依赖这层
+实践含义：
+- 这说明 Claude Code 把“模型看过什么”当成一等架构约束
+- 长任务稳定性并不只靠压缩，还靠 replacement 的前缀稳定性
 
 源码依据：
 - [src/utils/toolResultStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/toolResultStorage.ts)
@@ -644,8 +644,8 @@ export type ContentReplacementState = {
 实现原理：
 - `loadSkillsDir.ts` 载入，按路径或上下文激活，compact 后继续保留 invoked skills
 
-使用技巧：
-- skill 不是快捷短语，而是受上下文和任务面控制的能力面
+实践含义：
+- 这说明 skill 更像条件激活的能力 artifact，而不是简单 prompt 模板
 
 源码依据：
 - [src/utils/skills/loadSkillsDir.ts](/Users/bobo/code/claude-code-source-code/src/utils/skills/loadSkillsDir.ts)
@@ -659,8 +659,8 @@ export type ContentReplacementState = {
 实现原理：
 - relevant memories、skill delta、system reminders、task messages、file attachments
 
-使用技巧：
-- 模型每轮看到的上下文不是固定聊天记录，而是动态构造物
+实践含义：
+- 这说明 Claude Code 的 context 是每轮重建的工作面，而不是静态历史
 
 源码依据：
 - [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
@@ -673,9 +673,9 @@ export type ContentReplacementState = {
 实现原理：
 - allow / ask / deny、hook pre/post、classifier 决策链、auto mode
 
-使用技巧：
-- 高风险动作写清楚
-- 不要给模糊授权
+实践含义：
+- 这说明 Claude Code 的 autonomy boundary 不在 UI，而在执行链本身
+- 权限、钩子、classifier 共同决定模型能不能继续代表用户行动
 
 源码依据：
 - [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
@@ -689,8 +689,8 @@ export type ContentReplacementState = {
 实现原理：
 - task registry、local/remote agent、sidechain transcript、mailbox protocol
 
-使用技巧：
-- Claude Code 适合做多阶段任务，不只是单轮问答
+实践含义：
+- 这说明 Claude Code 已经具备多执行体组织能力，而不只是单 agent 对话
 
 源码依据：
 - [src/Task.ts](/Users/bobo/code/claude-code-source-code/src/Task.ts)
@@ -705,8 +705,8 @@ export type ContentReplacementState = {
 实现原理：
 - MCP client、plugin loader、remote session / remote agent
 
-使用技巧：
-- Claude Code 的上限来自能力面扩展，而不只是模型更强
+实践含义：
+- 这说明 Claude Code 的上限不仅由模型决定，还由协议、扩展和外部执行能力决定
 
 源码依据：
 - [src/services/mcp/client.ts](/Users/bobo/code/claude-code-source-code/src/services/mcp/client.ts)
