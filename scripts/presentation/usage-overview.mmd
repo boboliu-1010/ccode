@@ -1,0 +1,26 @@
+flowchart TD
+    U["User Prompt<br/>用户输入"]
+    PS["Prompt Stack<br/>提示词栈"]
+    QE["QueryEngine<br/>Conversation Host / 会话宿主"]
+    QL["query.ts<br/>Turn Loop / 轮次循环"]
+    TP["Tool Pipeline<br/>工具执行流水线"]
+    TOOLS["Tools / Bash / Read / Edit<br/>工具层"]
+    TASKS["Tasks / Subagents / Mailbox<br/>任务与子代理"]
+    ENV["Filesystem / Shell / MCP<br/>执行环境"]
+    CP["Settings / Auth / Policy<br/>Control Plane / 控制面"]
+    OBS["Telemetry / Profiling / Transcript<br/>可观测性与持久化"]
+
+    U --> PS --> QE --> QL --> TP
+    TP --> TOOLS
+    TP --> TASKS
+    TOOLS --> ENV
+    TASKS --> ENV
+
+    CP -.约束与裁决.-> PS
+    CP -.约束与裁决.-> QE
+    CP -.约束与裁决.-> QL
+    CP -.约束与裁决.-> TP
+
+    OBS -.记录与恢复.-> QE
+    OBS -.记录与恢复.-> QL
+    OBS -.记录与恢复.-> TP

@@ -24,6 +24,7 @@ PANEL_BG = RGBColor(10, 18, 36)
 PANEL_HDR = RGBColor(12, 30, 56)
 CODE_HDR = RGBColor(13, 20, 38)
 CODE_TEXT = RGBColor(196, 255, 236)
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 def set_run_font(run, size, color, bold=False, font=FONT):
@@ -160,6 +161,10 @@ def add_plain_box(slide, x, y, w, h, body_lines, fill=WHITE, line_color=LINE, si
 
 
 def add_code_box(slide, x, y, w, h, code):
+    return add_labeled_code_box(slide, x, y, w, h, "code", code)
+
+
+def add_labeled_code_box(slide, x, y, w, h, label, code):
     shape = slide.shapes.add_shape(
         MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h)
     )
@@ -176,7 +181,7 @@ def add_code_box(slide, x, y, w, h, code):
     style_tf(tf, 1, 1, 6, 6)
     p = tf.paragraphs[0]
     r = p.add_run()
-    r.text = "code"
+    r.text = label
     set_run_font(r, 10, ACCENT, True, font=MONO)
     tf = shape.text_frame
     style_tf(tf, 16, 6, 10, 10)
@@ -186,6 +191,10 @@ def add_code_box(slide, x, y, w, h, code):
     r.text = code
     set_run_font(r, 12.5, CODE_TEXT, font=MONO)
     return shape
+
+
+def add_image(slide, path, x, y, w, h):
+    slide.shapes.add_picture(str(path), Inches(x), Inches(y), width=Inches(w), height=Inches(h))
 
 
 def add_chip(slide, x, y, w, h, text, fill=ACCENT_SOFT, color=ACCENT):
@@ -219,7 +228,7 @@ def add_lead(prs):
     add_title(
         slide,
         "Claude Code 使用技巧与注意事项",
-        "从源码反推的用户侧最佳实践",
+        "使用建议与源码依据",
         lead=True,
     )
     add_bullets(
@@ -235,10 +244,9 @@ def add_lead(prs):
         size=18,
         color=WHITE,
     )
-    add_chip(slide, 0.95, 4.2, 1.55, 0.38, "源码支撑")
-    add_chip(slide, 2.65, 4.2, 1.8, 0.38, "双语术语")
-    add_chip(slide, 4.6, 4.2, 1.75, 0.38, "WPS 兼容")
-    add_note(slide, "建议节奏：先建立整体模型，再解释默认偏好，最后落到用户技巧。", 0.88, 6.8, 11.8, 0.3)
+    add_chip(slide, 0.95, 4.2, 1.55, 0.38, "源码依据")
+    add_chip(slide, 2.65, 4.2, 1.8, 0.38, "架构视角")
+    add_chip(slide, 4.6, 4.2, 1.75, 0.38, "使用方法")
 
 
 def add_architecture_slide(prs):
@@ -273,36 +281,18 @@ def add_architecture_slide(prs):
         line_color=ACCENT,
         size=15,
     )
-    add_note(slide, "代码锚点：main.tsx / QueryEngine.ts / query.ts / toolExecution.ts")
+    add_note(slide, "关键文件：main.tsx / QueryEngine.ts / query.ts / toolExecution.ts")
 
 
 def add_overview(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, "UML 总览图：Claude Code 的主执行链", "terminal agent runtime（终端代理运行时）视角")
-
-    add_panel(slide, 0.7, 1.85, 1.85, 1.0, "用户输入", ["User Prompt", "用户输入"], title_fill=PANEL_HDR)
-    add_panel(slide, 2.8, 1.85, 2.05, 1.0, "提示词栈", ["Prompt Stack", "默认行为约束"], title_fill=PANEL_HDR)
-    add_panel(slide, 5.1, 1.85, 2.15, 1.0, "会话宿主", ["QueryEngine", "Conversation Host"], title_fill=PANEL_HDR)
-    add_panel(slide, 7.55, 1.85, 2.1, 1.0, "轮次循环", ["query.ts", "Turn Loop"], title_fill=PANEL_HDR)
-    add_panel(slide, 9.95, 1.85, 2.55, 1.0, "工具执行流水线", ["Tool Pipeline", "执行与权限边界"], title_fill=PANEL_HDR)
-
-    add_panel(slide, 1.55, 3.55, 4.15, 1.2, "能力与任务", ["Tools / Bash / Read / Edit", "Tasks / Subagents / Mailbox"], title_fill=PANEL_HDR)
-    add_panel(slide, 5.95, 3.55, 2.45, 1.2, "执行环境", ["Filesystem", "Shell / MCP"], title_fill=PANEL_HDR)
-    add_panel(slide, 8.7, 3.55, 3.1, 1.2, "控制面", ["Settings / Auth / Policy", "Control Plane / 控制面"], title_fill=PANEL_HDR)
-    add_panel(slide, 3.0, 5.25, 5.5, 1.0, "可观测性与恢复", ["Telemetry / Profiling / Transcript", "持久化、观测、恢复"], title_fill=PANEL_HDR)
-
-    connect(slide, 2.55, 2.35, 2.8, 2.35)
-    connect(slide, 4.85, 2.35, 5.1, 2.35)
-    connect(slide, 7.25, 2.35, 7.55, 2.35)
-    connect(slide, 9.65, 2.35, 9.95, 2.35)
-    connect(slide, 10.7, 2.85, 10.25, 3.55)
-    connect(slide, 7.15, 4.15, 6.95, 4.15)
-    connect(slide, 5.75, 4.15, 5.75, 5.25)
+    add_image(slide, SCRIPT_DIR / "usage-overview.png", 0.9, 1.65, 11.5, 4.55)
 
     add_note(
         slide,
-        "一句话：用户技巧之所以有效，是因为它们在影响 prompt stack（提示词栈）→ turn loop（轮次循环）→ tool pipeline（工具执行流水线）这条主链。",
+        "这张图的重点是：用户输入会沿着 prompt stack（提示词栈）→ turn loop（轮次循环）→ tool pipeline（工具执行流水线）这条主链向下传递。",
     )
 
 
@@ -311,36 +301,7 @@ def add_sequence_slide(prs):
     add_bg(slide, BG)
     add_title(slide, "时序图：一次请求如何流过 Claude Code", "用一条 request → tool → result 链解释用户提示词为什么有效")
 
-    lanes = [
-        ("User", 0.8),
-        ("Prompt Stack", 3.0),
-        ("QueryEngine", 5.1),
-        ("query.ts", 7.2),
-        ("Tool Pipeline", 9.3),
-        ("Tools", 11.15),
-    ]
-
-    for name, x in lanes:
-        add_panel(slide, x, 1.6, 1.45, 0.7, name, [], title_fill=PANEL_HDR)
-        line = slide.shapes.add_connector(
-            MSO_CONNECTOR.STRAIGHT, Inches(x + 0.72), Inches(2.28), Inches(x + 0.72), Inches(5.95)
-        )
-        line.line.color.rgb = LINE
-        line.line.width = Pt(1.0)
-
-    def seq(x1, x2, y, text):
-        connect(slide, x1, y, x2, y)
-        bx = min(x1, x2) + 0.12
-        bw = max(0.9, abs(x2 - x1) - 0.24)
-        add_plain_box(slide, bx, y - 0.16, bw, 0.32, [text], fill=PANEL_HDR, line_color=ACCENT, size=11)
-
-    seq(1.52, 3.72, 2.7, "任务输入 / 约束")
-    seq(3.72, 5.82, 3.15, "组装 prompt 与 context")
-    seq(5.82, 7.92, 3.6, "启动 turn loop")
-    seq(7.92, 10.02, 4.05, "决定是否调用工具")
-    seq(10.02, 11.87, 4.5, "执行 tool")
-    seq(11.87, 10.02, 4.95, "tool result")
-    seq(10.02, 7.92, 5.4, "回灌 messages")
+    add_image(slide, SCRIPT_DIR / "usage-sequence.png", 0.95, 1.7, 11.4, 4.65)
 
     add_plain_box(
         slide,
@@ -355,20 +316,20 @@ def add_sequence_slide(prs):
     )
 
 
-def add_content(prs, title, one_liner, bullets, code=None, note=None):
+def add_content(prs, title, one_liner, bullets, code=None, note=None, snippet_label="源码代码"):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, title)
     add_plain_box(slide, 0.72, 1.68, 12.0, 0.72, [one_liner], fill=ACCENT_SOFT, line_color=ACCENT, size=16)
     add_bullets(slide, bullets, 0.82, 2.68, 6.1, 3.35, size=17)
     if code:
-        add_code_box(slide, 7.15, 2.7, 5.25, 2.7, code)
+        add_labeled_code_box(slide, 7.15, 2.7, 5.25, 2.7, snippet_label, code)
     if note:
         add_note(slide, note)
     return slide
 
 
-def add_tip(prs, title, one_liner, tip, why, architecture, code, source_note):
+def add_tip(prs, title, one_liner, tip, why, architecture, code, source_note, snippet_label="源码提示词"):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, title)
@@ -376,7 +337,7 @@ def add_tip(prs, title, one_liner, tip, why, architecture, code, source_note):
     add_panel(slide, 0.72, 2.55, 3.55, 1.7, "示例提示词", tip)
     add_panel(slide, 4.52, 2.55, 3.8, 1.7, "源码解释", why)
     add_panel(slide, 8.57, 2.55, 4.15, 1.7, "证据链", architecture)
-    add_code_box(slide, 0.72, 4.55, 12.0, 1.35, code)
+    add_labeled_code_box(slide, 0.72, 4.55, 12.0, 1.35, snippet_label, code)
     add_note(slide, source_note)
     return slide
 
@@ -400,6 +361,7 @@ def build():
         ],
         "The user will primarily request you to perform software engineering tasks.",
         "源码依据：/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts#L221",
+        snippet_label="源码提示词",
     )
 
     add_architecture_slide(prs)
@@ -418,6 +380,7 @@ def build():
         ],
         "In general, do not propose changes to code you haven't read.\nDo NOT use the Bash tool to run commands when a relevant dedicated tool is provided.\nReport outcomes faithfully: if tests fail, say so ...",
         "源码依据：prompts.ts#L230 / #L203 / #L305 / #L240 / #L258",
+        snippet_label="源码提示词",
     )
 
     add_tip(
@@ -440,6 +403,7 @@ def build():
         ],
         "The user will primarily request you to perform software engineering tasks.\nIn general, do not propose changes to code you haven't read.\nReport outcomes faithfully: if tests fail, say so ...",
         "源码依据：prompts.ts#L221 / #L230 / #L240",
+        snippet_label="源码提示词",
     )
 
     add_tip(
@@ -460,6 +424,7 @@ def build():
         ],
         "In general, do not propose changes to code you haven't read.\nIf a user asks about or wants you to modify a file, read it first.\n\n1. Explore — Use read-only tools to read code.\nLook for existing functions, utilities, and patterns to reuse.",
         "源码依据：prompts.ts#L230，messages.ts#L3344",
+        snippet_label="源码提示词",
     )
 
     add_tip(
@@ -481,6 +446,7 @@ def build():
         ],
         "Don't add features, refactor code, or make \"improvements\" beyond what was asked.\nDon't create helpers, utilities, or abstractions for one-time operations.",
         "源码依据：prompts.ts#L200 / #L203",
+        snippet_label="源码提示词",
     )
 
     add_tip(
@@ -501,6 +467,7 @@ def build():
         ],
         "default to using the dedicated tool and only fallback on using the Bash tool ...\nDo NOT use the Bash tool to run commands when a relevant dedicated tool is provided.",
         "源码依据：prompts.ts#L301 / #L305，BashTool prompt#L297",
+        snippet_label="源码提示词",
     )
 
     add_tip(
@@ -521,6 +488,7 @@ def build():
         ],
         "Before reporting a task complete, verify it actually works.\nNever claim \"all tests pass\" when output shows failures.",
         "源码依据：prompts.ts#L211 / #L240",
+        snippet_label="源码提示词",
     )
 
     add_tip(
@@ -541,6 +509,7 @@ def build():
         ],
         "Carefully consider the reversibility and blast radius of actions.\nask for confirmation before proceeding\nOnly use destructive operations when they are truly the best approach.",
         "源码依据：prompts.ts#L258，BashTool prompt#L304",
+        snippet_label="源码提示词",
     )
 
     add_content(
@@ -554,6 +523,7 @@ def build():
         ],
         "make all independent tool calls in parallel\n\n1. Explore — Use read-only tools to read code.\n2. Update the plan file.\n3. Ask the user only what code cannot answer.",
         "源码依据：prompts.ts#L310，messages.ts#L3336 / #L3344，BashTool prompt#L298",
+        snippet_label="源码提示词",
     )
 
     add_content(
@@ -568,6 +538,7 @@ def build():
         ],
         "The user will primarily request you to perform software engineering tasks.\nDon't add features, refactor code, or make \"improvements\" beyond what was asked.\nReport outcomes faithfully ...",
         "源码依据：prompts.ts#L221 / #L200 / #L240 / #L258",
+        snippet_label="源码提示词",
     )
 
     add_content(
@@ -583,10 +554,10 @@ def build():
             "高风险动作先确认",
         ],
         None,
-        "建议展示方式：这页只保留动词和结论，不再放源码，作为最后的拍照页。",
+        None,
     )
 
-    out = Path("/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude Code 使用技巧与注意事项-WPS兼容版.pptx")
+    out = Path("/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude Code 使用技巧与注意事项.pptx")
     prs.save(out)
     print(out)
 

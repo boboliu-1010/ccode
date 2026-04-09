@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant U as User<br/>用户
+    participant PS as Prompt Stack<br/>提示词栈
+    participant QE as QueryEngine<br/>会话宿主
+    participant QL as query.ts<br/>轮次循环
+    participant TP as Tool Pipeline<br/>工具执行流水线
+    participant T as Tools<br/>工具
+
+    U->>PS: 任务输入 / 约束
+    PS->>QE: 组装 prompt 与 context
+    QE->>QL: 启动 turn loop
+    QL->>TP: 决定是否调用工具
+    TP->>T: 执行 tool
+    T-->>TP: tool result
+    TP-->>QL: 回灌 messages
+    QL-->>QE: 继续 / 收敛
