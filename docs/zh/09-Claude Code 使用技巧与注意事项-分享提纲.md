@@ -29,6 +29,9 @@
 - 这张图放在封面之后，用来先建立 Claude Code 的整体模型
 - 它回答的问题不是“每个模块怎么实现”，而是“使用技巧为什么会受到这些架构层影响”
 
+本页一句话：
+- Claude Code 的使用技巧，本质上是在影响 `prompt stack（提示词栈） -> turn loop（轮次循环） -> tool pipeline（工具执行流水线）` 这条主执行链。
+
 建议讲法：
 - 最上层是用户输入
 - 中间是 `prompt stack（提示词栈）`、`turn loop（轮次循环）`、`tool pipeline（工具执行流水线）`
@@ -77,6 +80,9 @@ flowchart TD
 - [query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
 - [toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
 
+过渡到下一页：
+- 先有这个整体模型，下一步才容易理解 Claude Code 在用户侧“默认不是什么”。
+
 ## 1. 封面
 
 标题：
@@ -89,7 +95,13 @@ flowchart TD
 - 这不是功能介绍，而是使用方法论
 - 所有建议都来自源码，不是个人经验
 
+过渡到下一页：
+- 先做预期管理，再谈技巧，否则后面的建议会被误解成“使用偏好”而不是“系统默认工作方式”。
+
 ## 2. 先给结论：Claude Code 不是什么
+
+本页一句话：
+- Claude Code 不是自由聊天助手，而是默认按 `software engineering tasks（软件工程任务）` 来理解用户请求。
 
 核心信息：
 - 不是自由聊天助手
@@ -109,7 +121,13 @@ flowchart TD
 The user will primarily request you to perform software engineering tasks.
 ```
 
+过渡到下一页：
+- 既然它默认按工程任务理解输入，接下来就要说明这套系统在源码里到底由哪些层组成。
+
 ## 3. 从源码看：Claude Code 是什么
+
+本页一句话：
+- Claude Code 是一个 `terminal agent runtime（终端代理运行时）`，不是只包了一层模型 API 的 CLI。
 
 核心信息：
 - `main.tsx`：`bootstrap / assembly（启动 / 装配）`
@@ -157,7 +175,13 @@ type State = {
 }
 ```
 
+过渡到下一页：
+- 结构知道以后，下一步要看这套 runtime 默认鼓励什么行为、抑制什么行为。
+
 ## 4. 从源码反推：默认偏好的工作方式
+
+本页一句话：
+- 后面的所有使用技巧，都是把 Claude Code 源码里的默认偏好显式写进用户提示里。
 
 核心信息：
 - 先读代码
@@ -206,7 +230,13 @@ Report outcomes faithfully: if tests fail, say so ...
 ask for confirmation before proceeding
 ```
 
+过渡到下一页：
+- 先从最重要的一条开始：任务应该怎样描述，Claude Code 才最容易稳。
+
 ## 5. 技巧 1：任务写成“目标 + 范围 + 约束 + 验证”
+
+本页一句话：
+- 最稳定的输入方式，是把任务写成“目标 + 范围 + 约束 + 验证”。
 
 推荐写法：
 
@@ -248,7 +278,13 @@ In general, do not propose changes to code you haven't read.
 Report outcomes faithfully: if tests fail, say so ...
 ```
 
+过渡到下一页：
+- 任务结构定完以后，第二个最重要的动作是要求它先读代码，而不是先动手。
+
 ## 6. 技巧 2：明确要求先读代码，再改代码
+
+本页一句话：
+- “先读代码，再改代码”不是建议项，而是 Claude Code 源码里的默认工作顺序。
 
 推荐写法：
 
@@ -285,7 +321,13 @@ If a user asks about or wants you to modify a file, read it first.
 Look for existing functions, utilities, and patterns to reuse.
 ```
 
+过渡到下一页：
+- 读完以后，还需要进一步压住范围漂移，这就是“最小改动、优先复用”的作用。
+
 ## 7. 技巧 3：强调最小改动、优先复用
+
+本页一句话：
+- 把“最小改动、优先复用”写出来，能明显降低顺手重构和过早抽象。
 
 推荐写法：
 
@@ -318,7 +360,13 @@ Don't add features, refactor code, or make "improvements" beyond what was asked.
 Don't create helpers, utilities, or abstractions for one-time operations.
 ```
 
+过渡到下一页：
+- 范围控制住之后，下一步要控制执行手段，也就是优先专用工具，而不是直接上 Bash。
+
 ## 8. 技巧 4：优先 dedicated tools（专用工具），不要默认 Bash
+
+本页一句话：
+- Claude Code 更偏好 `dedicated tools（专用工具）`，Bash 在源码里是 fallback，不是首选。
 
 推荐写法：
 
@@ -358,7 +406,13 @@ Do NOT use the Bash tool to run commands when a relevant dedicated tool is provi
 If the commands are independent and can run in parallel, make multiple Bash tool calls in a single message.
 ```
 
+过渡到下一页：
+- 执行手段选对以后，还要避免“看起来做完了，实际上没验证”的情况。
+
 ## 9. 技巧 5：验证要求要写清楚，而且要如实汇报
+
+本页一句话：
+- 不要默认 Claude Code 已经验证过，验证要求必须显式写出来。
 
 推荐写法：
 
@@ -391,7 +445,13 @@ Before reporting a task complete, verify it actually works.
 Never claim "all tests pass" when output shows failures.
 ```
 
+过渡到下一页：
+- 除了验证，另一个必须显式收紧的是高风险动作的授权边界。
+
 ## 10. 技巧 6：高风险动作要显式要求先确认
+
+本页一句话：
+- 高风险动作先确认，不是额外保守，而是 Claude Code 的默认安全边界。
 
 推荐写法：
 
@@ -429,7 +489,13 @@ ask for confirmation before proceeding
 Only use destructive operations when they are truly the best approach.
 ```
 
+过渡到下一页：
+- 基础技巧讲完以后，再看两个会明显提升效率的进阶技巧：并行和规划模式。
+
 ## 11. 技巧 7：独立查询可以显式允许 parallel（并行）
+
+本页一句话：
+- 对彼此独立的查询，显式允许 `parallel（并行）`，能更贴近 Claude Code 的原生工作方式。
 
 推荐写法：
 
@@ -469,7 +535,17 @@ Look for existing functions, utilities, and patterns to reuse.
 If the commands are independent and can run in parallel, make multiple Bash tool calls ...
 ```
 
+补充讲点：
+- 这一页可以和 `Plan Mode workflow（规划模式工作流）` 放在同一页，作为两个进阶技巧一起讲。
+- 如果想再加一个小框，可以补一句：`先探索，再规划，再实现`。
+
+过渡到下一页：
+- 技巧讲完以后，最后需要收束成反面清单，也就是最容易让 Claude Code 失稳的几种用法。
+
 ## 12. 常见误区与注意事项
+
+本页一句话：
+- 大多数误用，本质上都在对抗 Claude Code 源码里的默认工作流。
 
 核心信息：
 - 不要把 Claude Code 当自由聊天助手
@@ -511,6 +587,9 @@ Report outcomes faithfully ...
 ask for confirmation before proceeding
 ```
 
+过渡到下一页：
+- 最后一页只保留用户真正需要带走的 6 条，不再展开解释。
+
 ## 13. 最小使用清单
 
 最终压成 6 条：
@@ -521,3 +600,11 @@ ask for confirmation before proceeding
 4. 优先 dedicated tools（专用工具），不要默认 Bash
 5. 验证结果要如实汇报
 6. 高风险动作先确认
+
+本页一句话：
+- 这 6 条就是可以直接拍照带走的 Claude Code 最小使用清单。
+
+建议展示方式：
+- 每条不超过一行半
+- 只保留动词和结论，不再放源码
+- 做成最后一页的“拍照页”
