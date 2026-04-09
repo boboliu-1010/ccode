@@ -33,6 +33,34 @@ WARN = RGBColor(250, 204, 21)
 LINE = RGBColor(38, 63, 110)
 CODE_TEXT = RGBColor(190, 246, 255)
 
+SLIDE_NOTES = {
+    11: """补充说明：
+
+- resume 时不是直接反序列化，而是先把历史修回 API 可继续状态。
+- 所以 recovery 的目标不是“还原 UI”，而是“恢复一个还能继续跑的 runtime”。
+- 这也是为什么 conversationRecovery.ts 会先过滤 unresolved tool use、orphaned thinking、whitespace-only assistant messages，再把消息恢复成可继续调用 API 的形态。
+
+相关延伸材料：
+- 06-走读附录：长会话与恢复机制.md
+""",
+    19: """补充说明：
+
+4.2 tool result budget / content replacement 解决的是“冻结输出命运”。
+
+关键文件：
+- src/utils/toolResultStorage.ts
+- src/services/compact/microCompact.ts
+
+这一层解决的不是“截断输出”，而是：
+- 大工具输出先落盘
+- 上下文里只保留稳定 preview
+- 某个 tool_use_id 一旦替换，后面始终使用同一 replacement string
+- 恢复后还要重放同一 replacement，保护 prompt cache prefix
+
+这层非常值钱，因为它说明 Claude Code 在认真维护长会话的稳定性，而不是简单把大文本塞进上下文。
+""",
+}
+
 
 class SlideData:
     def __init__(self, num: int, title: str, fields: Dict[str, str]):
@@ -246,6 +274,14 @@ def add_footer(slide, left, right=''):
         r2 = p2.add_run()
         r2.text = right
         set_run_font(r2, 9.5, MUTED)
+
+
+def set_slide_notes(slide, text: str):
+    notes_tf = slide.notes_slide.notes_text_frame
+    notes_tf.clear()
+    for i, line in enumerate(text.strip().splitlines()):
+        p = notes_tf.paragraphs[0] if i == 0 else notes_tf.add_paragraph()
+        p.text = line
 
 
 def markdown_label_list(block: str) -> List[str]:
@@ -701,6 +737,11 @@ def build_deck():
             function_slide(prs, sd)
         else:
             generic_slide(prs, sd)
+
+        slide = prs.slides[-1]
+        notes = SLIDE_NOTES.get(sd.num)
+        if notes:
+            set_slide_notes(slide, notes)
 
     prs.save(OUT)
     print(f'Wrote {OUT}')
