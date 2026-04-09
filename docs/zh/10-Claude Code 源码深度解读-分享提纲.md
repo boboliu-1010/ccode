@@ -6,7 +6,7 @@
 2. 它的一次工作流程如何推进
 3. 它有哪些功能面与控制面
 4. 哪些重要功能最值得展开讲清楚
-5. 如果基于这套思路继续开发，流程上有哪些建议
+5. 从源码看，哪些理解与借鉴边界最值得注意
 
 对应主稿与补充材料：
 
@@ -20,7 +20,7 @@
 
 - 推荐总页数：45 页左右
 - 推荐时长：45-60 分钟
-- 推荐节奏：先立模型，再讲主链路，再拆功能面，最后收束到开发建议
+- 推荐节奏：先立模型，再讲主链路，再拆功能面，最后收束到理解边界与借鉴点
 - 如果现场时间有限，可以优先保留：第 1、2、4、5 部分
 
 ## 术语对照
@@ -53,7 +53,7 @@
 - `Claude Code 源码深度解读`
 
 副标题：
-- `总体架构、工作流程、功能设计与开发建议`
+- `总体架构、工作流程、功能设计与理解边界`
 
 这一页讲什么：
 - 这不是产品测评，也不是功能演示
@@ -114,14 +114,14 @@
 ## 第 6 页：这场分享的主线
 
 本页一句话：
-- 全文围绕五个问题展开：架构、流程、功能、重点功能、开发建议。
+- 全文围绕五个问题展开：架构、流程、功能、重点功能、理解边界。
 
 讲点：
 - 先讲总体架构
 - 再讲工作流程
 - 再讲功能列表
 - 再讲重要功能细节
-- 最后讲开发流程建议
+- 最后讲理解边界与借鉴点
 
 ---
 
@@ -513,6 +513,22 @@ The user will primarily request you to perform software engineering tasks.
 - 输入越清晰，loop 越稳定
 - 任务越能被分解成明确工具步骤，效果越好
 
+源码依据：
+- [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+
+关键代码片段：
+
+```ts
+type State = {
+  messages: Message[]
+  toolUseContext: ToolUseContext
+  pendingToolUseSummary: Promise<ToolUseSummaryMessage | null> | undefined
+  stopHookActive: boolean | undefined
+  turnCount: number
+  transition: Continue | undefined
+}
+```
+
 ## 第 36 页：重要功能三：Tool Pipeline（工具执行流水线）
 
 功能：
@@ -524,6 +540,9 @@ The user will primarily request you to perform software engineering tasks.
 使用技巧：
 - 优先 dedicated tools
 - 不要默认让模型走 Bash
+
+源码依据：
+- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
 
 关键代码片段：
 
@@ -580,6 +599,18 @@ tool.call(...)
 使用技巧：
 - 长任务和断点续做是被系统认真支持的，不只是 UI 假象
 
+源码依据：
+- [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
+- [src/utils/conversationRecovery.ts](/Users/bobo/code/claude-code-source-code/src/utils/conversationRecovery.ts)
+
+关键代码片段：
+
+```ts
+const filteredToolUses = filterUnresolvedToolUses(migratedMessages)
+const filteredThinking =
+  filterOrphanedThinkingOnlyMessages(filteredToolUses)
+```
+
 ## 第 40 页：重要功能七：Content Replacement（内容替换）
 
 功能：
@@ -592,6 +623,19 @@ tool.call(...)
 - 不要把工具返回当成必须全部保留在上下文里
 - Claude Code 的长任务稳定性很大程度依赖这层
 
+源码依据：
+- [src/utils/toolResultStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/toolResultStorage.ts)
+- [src/services/compact/microCompact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/microCompact.ts)
+
+关键代码片段：
+
+```ts
+export type ContentReplacementState = {
+  seenIds: Set<string>
+  replacements: Map<string, string>
+}
+```
+
 ## 第 41 页：重要功能八：Skills（技能）
 
 功能：
@@ -603,6 +647,10 @@ tool.call(...)
 使用技巧：
 - skill 不是快捷短语，而是受上下文和任务面控制的能力面
 
+源码依据：
+- [src/utils/skills/loadSkillsDir.ts](/Users/bobo/code/claude-code-source-code/src/utils/skills/loadSkillsDir.ts)
+- [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
+
 ## 第 42 页：重要功能九：Attachments（上下文附件）
 
 功能：
@@ -613,6 +661,9 @@ tool.call(...)
 
 使用技巧：
 - 模型每轮看到的上下文不是固定聊天记录，而是动态构造物
+
+源码依据：
+- [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
 
 ## 第 43 页：重要功能十：Permissions / Hooks / Classifier
 
@@ -626,6 +677,10 @@ tool.call(...)
 - 高风险动作写清楚
 - 不要给模糊授权
 
+源码依据：
+- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+- [src/utils/permissions/permissions.ts](/Users/bobo/code/claude-code-source-code/src/utils/permissions/permissions.ts)
+
 ## 第 44 页：重要功能十一：Tasks / Subagents / Mailbox
 
 功能：
@@ -636,6 +691,11 @@ tool.call(...)
 
 使用技巧：
 - Claude Code 适合做多阶段任务，不只是单轮问答
+
+源码依据：
+- [src/Task.ts](/Users/bobo/code/claude-code-source-code/src/Task.ts)
+- [src/utils/task/framework.ts](/Users/bobo/code/claude-code-source-code/src/utils/task/framework.ts)
+- [src/tools/AgentTool/runAgent.ts](/Users/bobo/code/claude-code-source-code/src/tools/AgentTool/runAgent.ts)
 
 ## 第 45 页：重要功能十二：MCP / Plugins / Remote Capability
 
@@ -648,6 +708,10 @@ tool.call(...)
 使用技巧：
 - Claude Code 的上限来自能力面扩展，而不只是模型更强
 
+源码依据：
+- [src/services/mcp/client.ts](/Users/bobo/code/claude-code-source-code/src/services/mcp/client.ts)
+- [src/utils/plugins/pluginLoader.ts](/Users/bobo/code/claude-code-source-code/src/utils/plugins/pluginLoader.ts)
+
 ## 第 46 页：重要功能小结
 
 本页一句话：
@@ -655,9 +719,9 @@ tool.call(...)
 
 ---
 
-# 第六部分：开发流程建议（6 页）
+# 第六部分：理解边界与借鉴点（6 页）
 
-## 第 47 页：如果你要读这份代码，建议怎么进入
+## 第 47 页：如果你要读这份代码，怎样建立理解顺序
 
 讲点：
 - 先读 `main.tsx`
@@ -666,14 +730,26 @@ tool.call(...)
 - 再读 compact / recovery
 - 最后读 control plane 与扩展系统
 
-## 第 48 页：如果你要改这份代码，建议怎么下手
+源码依据：
+- [src/main.tsx](/Users/bobo/code/claude-code-source-code/src/main.tsx)
+- [src/QueryEngine.ts](/Users/bobo/code/claude-code-source-code/src/QueryEngine.ts)
+- [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+
+## 第 48 页：如果你要改这份代码，哪些状态和链路必须先确认
 
 讲点：
 - 先确定改动属于哪一层：宿主、loop、tools、control plane、task runtime
 - 先确认状态载体
 - 先确认 recovery / compact / cache 是否受影响
 
-## 第 49 页：如果你要借鉴这份架构，哪些值得学
+源码依据：
+- [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+- [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
+- [src/services/compact/microCompact.ts](/Users/bobo/code/claude-code-source-code/src/services/compact/microCompact.ts)
+- [src/utils/toolResultStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/toolResultStorage.ts)
+
+## 第 49 页：从源码看，哪些设计最值得借鉴
 
 讲点：
 - turn loop 的恢复图思路
@@ -682,7 +758,14 @@ tool.call(...)
 - content replacement / compact
 - task runtime / mailbox
 
-## 第 50 页：哪些不该直接照抄
+源码依据：
+- [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+- [src/utils/conversationRecovery.ts](/Users/bobo/code/claude-code-source-code/src/utils/conversationRecovery.ts)
+- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+- [src/utils/toolResultStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/toolResultStorage.ts)
+- [src/utils/task/framework.ts](/Users/bobo/code/claude-code-source-code/src/utils/task/framework.ts)
+
+## 第 50 页：从源码看，哪些地方体现了明显结构债
 
 讲点：
 - God Loop 倾向
@@ -691,13 +774,30 @@ tool.call(...)
 - continuity surface 太多
 - control plane owner 不清
 
-## 第 51 页：开发建议：怎样做会更稳
+源码依据：
+- [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+- [src/Tool.ts](/Users/bobo/code/claude-code-source-code/src/Tool.ts)
+- [src/utils/toolResultStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/toolResultStorage.ts)
+- [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
+
+## 第 51 页：从代码演化角度看，更稳的方向是什么
 
 讲点：
 - 先建状态模型，再写实现
 - 先把失败路径当一等对象
 - 给主流程加 observability
 - 不要只优化 happy path
+
+代码理解支撑：
+- `query.ts` 已经事实性地表现出状态机形态，只是状态分散
+- recovery / compact / permissions / task lifecycle 都说明 failure path 是主路径的一部分
+- `queryProfiler.ts`、`promptCacheBreakDetection.ts`、`analyzeContext.ts` 说明 observability 不是附属品
+
+源码依据：
+- [src/query.ts](/Users/bobo/code/claude-code-source-code/src/query.ts)
+- [src/utils/queryProfiler.ts](/Users/bobo/code/claude-code-source-code/src/utils/queryProfiler.ts)
+- [src/services/api/promptCacheBreakDetection.ts](/Users/bobo/code/claude-code-source-code/src/services/api/promptCacheBreakDetection.ts)
+- [src/utils/analyzeContext.ts](/Users/bobo/code/claude-code-source-code/src/utils/analyzeContext.ts)
 
 ## 第 52 页：总结页
 
