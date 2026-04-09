@@ -275,19 +275,19 @@ def add_cover_slide(prs: Presentation, sd: SlideData):
     r = p.add_run()
     r.text = '通过足够的源码理解，帮助用户和团队更好地使用 Claude Code。'
     set_run_font(r, 19, TITLE, True)
-    add_panel(slide, 0.72, 2.95, 5.72, 2.5, '这场分享要解决什么', title_color=ACCENT)
+    add_panel(slide, 0.72, 2.95, 5.72, 2.5, '调研目标', title_color=ACCENT)
     add_text(slide, 0.95, 3.32, 5.22, 2.0, [
         '为什么同样是 Claude Code，有的人越用越顺，有的人越用越乱。',
         '为什么它更适合工程任务，而不是自由聊天式请求。',
         '怎样组织任务、边界和验证，才能让它稳定地产出结果。',
     ], size=16.5)
-    add_panel(slide, 6.74, 2.95, 5.86, 2.5, '这场分享怎么讲', title_color=ACCENT_2)
+    add_panel(slide, 6.74, 2.95, 5.86, 2.5, '调研范围', title_color=ACCENT_2)
     add_text(slide, 6.97, 3.32, 5.34, 2.0, [
         '先用源码建立最小必要架构模型。',
         '再讲工作流程、功能和典型产出。',
         '最后把结论落到开发流程建议与代码走读入口。',
     ], size=16.5)
-    add_panel(slide, 0.72, 5.82, 11.88, 0.9, '核心判断', title_color=WARN, fill=PANEL_3)
+    add_panel(slide, 0.72, 5.82, 11.88, 0.9, '调研结论', title_color=WARN, fill=PANEL_3)
     add_text(slide, 0.93, 6.17, 11.45, 0.35, ['Claude Code 不是自由聊天助手，而是一套围绕工程任务构建的 terminal agent runtime（终端代理运行时）。'], size=17, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', '封面')
 
@@ -350,7 +350,7 @@ def add_overview_diagram(prs: Presentation, sd: SlideData):
     connect(slide, 10.82, 3.36, 10.82, 4.38, ACCENT_3)
     takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
     if takeaway:
-        add_panel(slide, 0.82, 6.08, 11.85, 0.72, '关键结论', title_color=ACCENT)
+        add_panel(slide, 0.82, 6.08, 11.85, 0.72, '调研结论', title_color=ACCENT)
         add_text(slide, 1.04, 6.38, 11.35, 0.2, takeaway, size=14.5, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', '总体架构')
 
@@ -415,7 +415,7 @@ def add_capability_slide(prs: Presentation, sd: SlideData):
         add_panel(slide, x, y, 2.05, 1.6, title, title_color=color)
         add_text(slide, x+0.08, y+0.37, 1.9, 1.1, items, size=12.6)
     takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
-    add_panel(slide, 0.86, 6.15, 11.8, 0.65, '关键结论', title_color=ACCENT_3)
+    add_panel(slide, 0.86, 6.15, 11.8, 0.65, '调研结论', title_color=ACCENT_3)
     add_text(slide, 1.06, 6.42, 11.35, 0.2, takeaway or ['功能多本身不重要，关键是这些能力能围绕主执行链协同。'], size=14.2, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', '功能介绍')
 
@@ -466,12 +466,12 @@ def generic_slide(prs: Presentation, sd: SlideData):
         add_panel(slide, 7.82, top_y+2.12, 4.8, 1.83, '这段代码说明什么', title_color=ACCENT_3)
         add_text(slide, 8.02, top_y+2.48, 4.4, 1.38, insight[:4] or ['这段代码支撑了当前页的判断。'], size=13.2)
     else:
-        add_panel(slide, 7.82, top_y, 4.8, 2.22, '实现逻辑', title_color=ACCENT_3)
-        add_text(slide, 8.02, top_y+0.38, 4.4, 1.72, insight[:5] or ['这页主要是概览，不强行上代码块。'], size=13.2)
-        add_panel(slide, 7.82, top_y+2.42, 4.8, 1.53, '相关模块', title_color=ACCENT)
+        add_panel(slide, 7.82, top_y, 4.8, 2.22, '实现含义', title_color=ACCENT_3)
+        add_text(slide, 8.02, top_y+0.38, 4.4, 1.72, insight[:5] or ['本页重点在于建立整体理解，而不是展开单段代码。'], size=13.2)
+        add_panel(slide, 7.82, top_y+2.42, 4.8, 1.53, '相关代码', title_color=ACCENT)
         add_text(slide, 8.02, top_y+2.78, 4.35, 1.08, sources[:4] or ['本页无单独源码列表'], size=11.6)
 
-    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '关键结论', title_color=WARN, fill=PANEL_3)
+    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '调研结论', title_color=WARN, fill=PANEL_3)
     add_text(slide, 0.84, 6.83, 11.58, 0.18, takeaway or ['本页的重点是建立正确心智模型。'], size=14.2, bullet=False)
     footer_right = ' / '.join(sources[:4])
     add_footer(slide, 'Claude Code 源码调研', footer_right)
@@ -502,12 +502,12 @@ def function_slide(prs: Presentation, sd: SlideData):
         add_panel(slide, 8.02, top_y+2.28, 4.62, 1.42, '这段代码说明什么', title_color=WARN)
         add_text(slide, 8.2, top_y+2.62, 4.22, 0.94, insight[:4], size=12.8)
     else:
-        add_panel(slide, 8.02, top_y, 4.62, 2.0, '实现逻辑', title_color=WARN)
+        add_panel(slide, 8.02, top_y, 4.62, 2.0, '实现含义', title_color=WARN)
         add_text(slide, 8.2, top_y+0.38, 4.22, 1.46, insight[:5], size=12.8)
-        add_panel(slide, 8.02, top_y+2.18, 4.62, 1.52, '相关模块', title_color=ACCENT)
+        add_panel(slide, 8.02, top_y+2.18, 4.62, 1.52, '相关代码', title_color=ACCENT)
         add_text(slide, 8.2, top_y+2.54, 4.22, 1.0, sources[:4] or ['本页无单独源码列表'], size=11.4)
     takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
-    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '关键结论', title_color=WARN, fill=PANEL_3)
+    add_panel(slide, 0.62, 6.55, 12.02, 0.68, '调研结论', title_color=WARN, fill=PANEL_3)
     add_text(slide, 0.84, 6.83, 11.58, 0.18, takeaway or ['理解机制之后，才能推出更稳定的使用方式。'], size=14.0, bullet=False)
     add_footer(slide, 'Claude Code 源码调研', ' / '.join(sources[:4]))
 
