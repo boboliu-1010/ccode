@@ -420,19 +420,183 @@ def add_capability_slide(prs: Presentation, sd: SlideData):
     add_footer(slide, 'Claude Code 源码调研', '功能介绍')
 
 
+def add_codewalk_architecture_slide(prs: Presentation, sd: SlideData):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide)
+    add_title(slide, sd.title, '按主执行链和控制链理解代码结构，而不是按目录平铺。')
+    core = parse_bullets(sd.fields.get('核心内容', ''))
+    code = parse_code(sd.fields.get('关键代码片段', ''))
+    takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
+
+    # Diagram area
+    nodes = [
+        ('main.tsx', 0.75, 1.9, 1.7, 0.7, ACCENT),
+        ('QueryEngine.ts', 2.8, 1.9, 2.0, 0.7, ACCENT_2),
+        ('query.ts', 5.25, 1.9, 1.7, 0.7, ACCENT_2),
+        ('toolExecution.ts', 7.3, 1.9, 2.2, 0.7, ACCENT_3),
+        ('compact / recovery', 9.95, 1.9, 2.35, 0.7, WARN),
+    ]
+    for txt, x, y, w, h, color in nodes:
+        shp = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, x, y, w, h, fill=PANEL, line=color)
+        tf = shp.text_frame
+        style_tf(tf, 6, 6, 8, 8)
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        r = p.add_run()
+        r.text = txt
+        set_run_font(r, 14.2, TITLE, True)
+    connect(slide, 2.45, 2.25, 2.8, 2.25)
+    connect(slide, 4.8, 2.25, 5.25, 2.25)
+    connect(slide, 6.95, 2.25, 7.3, 2.25)
+    connect(slide, 9.5, 2.25, 9.95, 2.25)
+
+    control = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 1.25, 3.1, 3.4, 0.78, fill=PANEL, line=ACCENT)
+    tf = control.text_frame
+    style_tf(tf, 6, 6, 8, 8)
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    r = p.add_run()
+    r.text = 'settings / auth / policy / prompt'
+    set_run_font(r, 13.8, TITLE, True)
+
+    ext = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 5.2, 3.1, 3.1, 0.78, fill=PANEL, line=ACCENT_2)
+    tf = ext.text_frame
+    style_tf(tf, 6, 6, 8, 8)
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    r = p.add_run()
+    r.text = 'tasks / MCP / plugins / skills'
+    set_run_font(r, 13.2, TITLE, True)
+
+    msgs = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 8.75, 3.1, 2.55, 0.78, fill=PANEL, line=ACCENT_3)
+    tf = msgs.text_frame
+    style_tf(tf, 6, 6, 8, 8)
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    r = p.add_run()
+    r.text = 'messages / transcript'
+    set_run_font(r, 13.4, TITLE, True)
+
+    connect(slide, 3.0, 3.1, 3.75, 2.6, ACCENT)
+    connect(slide, 6.75, 3.1, 6.2, 2.6, ACCENT_2)
+    connect(slide, 10.0, 3.1, 10.6, 2.6, ACCENT_3)
+
+    add_panel(slide, 0.75, 4.15, 5.35, 2.0, '代码结构拆法', title_color=ACCENT_2)
+    add_text(slide, 0.95, 4.52, 4.95, 1.48, core[:7], size=13.2)
+    if code:
+        add_code_box(slide, 6.35, 4.15, 6.0, 2.0, code, '关键源码片段')
+    if takeaway:
+        add_panel(slide, 0.75, 6.45, 11.62, 0.58, '调研结论', title_color=WARN, fill=PANEL_3)
+        add_text(slide, 0.95, 6.67, 11.2, 0.18, takeaway, size=14.0, bullet=False)
+    add_footer(slide, 'Claude Code 源码调研', '代码走读概略')
+
+
+def add_codewalk_order_slide(prs: Presentation, sd: SlideData):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide)
+    add_title(slide, sd.title, '先抓主执行链，再补续航、扩展和控制。')
+    core = parse_bullets(sd.fields.get('核心内容', ''))
+    code = parse_code(sd.fields.get('关键代码片段', ''))
+    takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
+
+    first = ['main.tsx', 'QueryEngine.ts', 'query.ts', 'toolExecution.ts']
+    second = ['compact / recovery', 'tasks / MCP / skills']
+
+    add_panel(slide, 0.75, 1.72, 5.75, 1.45, '第一遍：主执行链', title_color=ACCENT)
+    x = 0.98
+    for idx, label in enumerate(first):
+        shp = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, x, 2.18, 1.15 if idx != 1 else 1.45, 0.55, fill=PANEL, line=ACCENT)
+        tf = shp.text_frame
+        style_tf(tf, 5, 5, 6, 6)
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        r = p.add_run()
+        r.text = label
+        set_run_font(r, 11.6, TITLE, True)
+        if idx < len(first) - 1:
+            nx = x + (1.15 if idx != 1 else 1.45) + 0.18
+            connect(slide, x + (1.15 if idx != 1 else 1.45), 2.45, nx, 2.45)
+            x = nx
+
+    add_panel(slide, 6.8, 1.72, 5.55, 1.45, '第二遍：续航与扩展', title_color=ACCENT_2)
+    for i, label in enumerate(second):
+        xx = 7.15 + i * 2.5
+        shp = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, xx, 2.18, 1.95, 0.55, fill=PANEL, line=ACCENT_2)
+        tf = shp.text_frame
+        style_tf(tf, 5, 5, 6, 6)
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        r = p.add_run()
+        r.text = label
+        set_run_font(r, 11.4, TITLE, True)
+        if i == 0:
+            connect(slide, xx + 1.95, 2.45, xx + 2.3, 2.45, ACCENT_2)
+
+    add_panel(slide, 0.75, 3.55, 5.75, 2.2, '阅读顺序的原因', title_color=ACCENT_3)
+    add_text(slide, 0.95, 3.92, 5.35, 1.7, core[:8], size=13.1)
+    if code:
+        add_code_box(slide, 6.8, 3.55, 5.55, 2.2, code, '关键源码片段')
+    if takeaway:
+        add_panel(slide, 0.75, 6.05, 11.6, 0.62, '调研结论', title_color=WARN, fill=PANEL_3)
+        add_text(slide, 0.95, 6.3, 11.2, 0.18, takeaway, size=14.0, bullet=False)
+    add_footer(slide, 'Claude Code 源码调研', '代码走读概略')
+
+
+def add_keyfiles_slide(prs: Presentation, sd: SlideData):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    add_bg(slide)
+    add_title(slide, sd.title, '围绕五个高价值入口文件建立整体模型。')
+    core = parse_bullets(sd.fields.get('核心内容', ''))
+    takeaway = parse_bullets(sd.fields.get('希望听众带走什么', ''))
+
+    center = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, 5.45, 2.2, 2.4, 0.78, fill=PANEL, line=ACCENT)
+    tf = center.text_frame
+    style_tf(tf, 6, 6, 8, 8)
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    r = p.add_run()
+    r.text = '五个入口文件'
+    set_run_font(r, 16, TITLE, True)
+
+    related = [
+        ('main.tsx', 1.0, 1.55, ACCENT),
+        ('QueryEngine.ts', 8.9, 1.55, ACCENT_2),
+        ('query.ts', 1.15, 3.25, ACCENT_2),
+        ('toolExecution.ts', 8.55, 3.25, ACCENT_3),
+        ('sessionStorage.ts', 4.75, 4.2, WARN),
+    ]
+    for txt, x, y, color in related:
+        shp = add_shape(slide, MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, x, y, 2.0, 0.64, fill=PANEL, line=color)
+        tf = shp.text_frame
+        style_tf(tf, 5, 5, 8, 8)
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        r = p.add_run()
+        r.text = txt
+        set_run_font(r, 12.6, TITLE, True)
+        connect(slide, x + 1.0, y + 0.64, 6.65, 2.98, color)
+
+    add_panel(slide, 0.75, 5.15, 11.6, 1.25, '为什么优先看这五个文件', title_color=ACCENT_2)
+    add_text(slide, 0.95, 5.52, 11.2, 0.78, core[:8], size=13.2)
+    if takeaway:
+        add_panel(slide, 0.75, 6.56, 11.6, 0.58, '调研结论', title_color=WARN, fill=PANEL_3)
+        add_text(slide, 0.95, 6.79, 11.2, 0.18, takeaway, size=14.0, bullet=False)
+    add_footer(slide, 'Claude Code 源码调研', '代码走读概略')
+
+
 def generic_slide(prs: Presentation, sd: SlideData):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide)
     subtitle = ''
-    if 1 <= sd.num <= 8:
+    if 1 <= sd.num <= 6:
         subtitle = '总体架构'
-    elif 9 <= sd.num <= 16:
+    elif 7 <= sd.num <= 12:
         subtitle = '工作流程'
-    elif 17 <= sd.num <= 35:
+    elif 13 <= sd.num <= 23:
         subtitle = '功能介绍'
-    elif 36 <= sd.num <= 40:
+    elif 24 <= sd.num <= 27:
         subtitle = '产出'
-    elif 41 <= sd.num <= 53:
+    elif 28 <= sd.num <= 37:
         subtitle = '开发流程建议'
     else:
         subtitle = '代码走读概略'
@@ -525,8 +689,14 @@ def build_deck():
             add_overview_diagram(prs, sd)
         elif sd.num == 10:
             add_workflow_diagram(prs, sd)
-        elif sd.num == 17:
+        elif sd.num == 13:
             add_capability_slide(prs, sd)
+        elif sd.num == 38:
+            add_codewalk_architecture_slide(prs, sd)
+        elif sd.num == 39:
+            add_codewalk_order_slide(prs, sd)
+        elif sd.num == 40:
+            add_keyfiles_slide(prs, sd)
         elif '功能' in sd.fields:
             function_slide(prs, sd)
         else:

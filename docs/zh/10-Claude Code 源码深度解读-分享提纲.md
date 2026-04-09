@@ -1257,6 +1257,14 @@ you MUST use the SendMessage tool.
   - 中间两层帮助理解边界与控制
   - 最后一层帮助理解为什么它能长期工作和持续扩展
 
+**建议配图**
+- 一张“代码结构关系图”，至少画出：
+  - `main.tsx -> QueryEngine.ts -> query.ts`
+  - `query.ts -> toolExecution.ts`
+  - `query.ts -> compact / recovery`
+  - `main.tsx -> settings / auth / policy / prompt`
+  - `query.ts / toolExecution.ts -> tasks / MCP / skills`
+
 **关键代码片段**
 
 ```ts
@@ -1265,8 +1273,21 @@ type State = { ... }
 export async function executeToolCalls(...) { ... }
 ```
 
+```ts
+const processUserInputContext: ProcessUserInputContext = {
+  canUseTool: this.config.canUseTool,
+  getUpdatedContext: () => ({
+    commands,
+    tools,
+    agents,
+    mcpClients,
+  }),
+}
+```
+
 **代码理解支撑**
 - Claude Code 的目录层次和运行时层次不完全一致，因此读代码时要优先遵循执行链，而不是只看文件夹结构。
+- 第二段代码说明 `QueryEngine.ts` 并不是单纯消息容器，它会把 commands、tools、agents、MCP clients 一起装配进运行时上下文；这也是为什么代码组织要按“主执行链 + 能力/控制链”来理解。
 
 **希望听众带走什么**
 - 先看代码分层，再看实现细节，效率会高很多。
@@ -1289,8 +1310,33 @@ export async function executeToolCalls(...) { ... }
   - 第二遍再补 `compact / recovery / tasks / MCP / skills`
 - 这样做的好处是，先建立“系统怎么跑”的心智模型，再看“系统还能做什么、怎么继续工作”，理解会顺很多
 
+**建议配图**
+- 一张“代码走读顺序图”：
+  - 第一遍阅读：主执行链
+  - 第二遍阅读：续航、扩展、控制
+- 让听众能一眼看出阅读顺序不是按目录，而是按职责递进。
+
+**关键代码片段**
+
+```ts
+// Persist the user's message(s) to transcript BEFORE entering the query loop.
+if (persistSession && messagesFromUserInput.length > 0) {
+  const transcriptPromise = recordTranscript(messages)
+  ...
+}
+```
+
+```ts
+type State = {
+  messages: Message[]
+  toolUseContext: ToolUseContext
+  transition: Continue | undefined
+}
+```
+
 **代码理解支撑**
 - 这条顺序是从装配、宿主、执行、恢复、扩展逐层展开，最容易建立完整心智模型。
+- 第一段代码说明 `QueryEngine.ts` 在进入 loop 前就已经处理持久化和宿主状态；第二段代码说明 `query.ts` 的核心不是单次回答，而是维护可迁移状态。这两点决定了阅读顺序必须先“装配/宿主”，再“执行/恢复”。
 
 **希望听众带走什么**
 - 代码走读不应该按目录平铺，而应该按运行链和控制链阅读。
@@ -1323,8 +1369,18 @@ export async function executeToolCalls(...) { ... }
   - 工具怎么被约束执行
   - 长任务和中断怎么继续
 
+**建议配图**
+- 一张“重点文件关系图”，建议把五个主入口放在中间，再把：
+  - `tools.ts / commands.ts`
+  - `compact/*`
+  - `conversationRecovery.ts`
+  - `BashTool.tsx`
+  - `messages.ts`
+  作为外围关联模块挂在旁边。
+
 **代码理解支撑**
 - 这组文件覆盖了装配、宿主、执行、工具、续航和工作流提示，是 Claude Code 运行时的最小高价值切片。
+- 如果听众只打算花有限时间自己读代码，这页给出的文件集合已经足够支撑一次“建立整体模型 -> 跟主流程 -> 理解续航机制”的完整走读。
 
 **希望听众带走什么**
 - 这组文件足以支撑一次高质量的 Claude Code 源码走读。
