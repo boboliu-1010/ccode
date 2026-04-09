@@ -284,22 +284,65 @@ def add_architecture_slide(prs):
     add_note(slide, "关键文件：main.tsx / QueryEngine.ts / query.ts / toolExecution.ts")
 
 
+def add_stage_box(slide, x, y, w, h, title, body):
+    shape = slide.shapes.add_shape(
+        MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h)
+    )
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = PANEL_BG
+    shape.line.color.rgb = ACCENT
+    shape.line.width = Pt(1.8)
+    tf = shape.text_frame
+    style_tf(tf, 8, 8, 12, 12)
+    tf.clear()
+    p1 = tf.paragraphs[0]
+    p1.alignment = PP_ALIGN.CENTER
+    r1 = p1.add_run()
+    r1.text = title
+    set_run_font(r1, 20, ACCENT, True)
+    p2 = tf.add_paragraph()
+    p2.alignment = PP_ALIGN.CENTER
+    p2.space_before = Pt(6)
+    r2 = p2.add_run()
+    r2.text = body
+    set_run_font(r2, 14, TEXT)
+    return shape
+
+
 def add_overview(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
-    add_title(slide, "UML 总览图：Claude Code 的主执行链", "terminal agent runtime（终端代理运行时）视角")
-    add_image(slide, SCRIPT_DIR / "usage-overview.png", 0.22, 1.18, 12.9, 5.9)
+    add_title(slide, "结构图：Claude Code 的主执行链", "用最少的层说明系统是怎么跑起来的")
+
+    add_stage_box(slide, 0.55, 2.15, 2.0, 1.45, "User Prompt", "用户输入\n目标 / 范围 / 约束")
+    add_stage_box(slide, 2.95, 2.15, 2.15, 1.45, "Prompt Stack", "提示词栈\n默认行为约束")
+    add_stage_box(slide, 5.5, 2.15, 2.15, 1.45, "QueryEngine", "会话宿主\nConversation Host")
+    add_stage_box(slide, 8.05, 2.15, 2.15, 1.45, "query.ts", "轮次循环\nTurn Loop")
+    add_stage_box(slide, 10.6, 2.15, 2.15, 1.45, "Tool Pipeline", "工具执行流水线")
+
+    connect(slide, 2.55, 2.88, 2.95, 2.88)
+    connect(slide, 5.1, 2.88, 5.5, 2.88)
+    connect(slide, 7.65, 2.88, 8.05, 2.88)
+    connect(slide, 10.2, 2.88, 10.6, 2.88)
+
+    add_stage_box(slide, 2.35, 4.55, 3.2, 1.4, "Tools / Tasks", "Bash / Read / Edit\nSubagents / Mailbox")
+    add_stage_box(slide, 6.0, 4.55, 2.4, 1.4, "Environment", "Filesystem / Shell\nMCP")
+    add_stage_box(slide, 8.85, 4.55, 3.0, 1.4, "Control Plane", "Settings / Auth / Policy")
+
+    connect(slide, 11.65, 3.6, 10.15, 4.55)
+    connect(slide, 5.55, 5.25, 6.0, 5.25)
+    connect(slide, 8.4, 5.25, 8.85, 5.25)
 
     add_plain_box(
         slide,
-        0.35,
-        6.45,
-        12.6,
-        0.4,
-        ["重点：用户输入会沿着 prompt stack（提示词栈）→ turn loop（轮次循环）→ tool pipeline（工具执行流水线）这条主链向下传递。"],
+        0.75,
+        6.35,
+        12.0,
+        0.42,
+        ["重点：用户技巧之所以有效，是因为它们会直接影响 Prompt Stack、Turn Loop 和 Tool Pipeline 这条主链。"],
         fill=ACCENT_SOFT,
         line_color=ACCENT,
-        size=12,
+        size=13,
     )
 
 
@@ -307,19 +350,53 @@ def add_sequence_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_bg(slide, BG)
     add_title(slide, "时序图：一次请求如何流过 Claude Code", "用一条 request → tool → result 链解释用户提示词为什么有效")
+    lanes = [
+        ("User", 1.0),
+        ("Prompt Stack", 3.35),
+        ("QueryEngine", 5.7),
+        ("query.ts", 8.05),
+        ("Tool Pipeline", 10.35),
+    ]
 
-    add_image(slide, SCRIPT_DIR / "usage-sequence.png", 0.22, 1.18, 12.9, 5.9)
+    for name, x in lanes:
+        add_stage_box(slide, x, 1.72, 1.65, 0.82, name, "")
+        line = slide.shapes.add_connector(
+            MSO_CONNECTOR.STRAIGHT, Inches(x + 0.825), Inches(2.54), Inches(x + 0.825), Inches(6.0)
+        )
+        line.line.color.rgb = LINE
+        line.line.width = Pt(1.2)
+
+    def seq_msg(x1, x2, y, text):
+        connect(slide, x1, y, x2, y)
+        add_plain_box(
+            slide,
+            min(x1, x2) + 0.12,
+            y - 0.14,
+            max(1.0, abs(x2 - x1) - 0.24),
+            0.3,
+            [text],
+            fill=PANEL_HDR,
+            line_color=ACCENT,
+            size=11.5,
+        )
+
+    seq_msg(1.82, 4.17, 2.95, "任务输入 / 约束")
+    seq_msg(4.17, 6.52, 3.45, "组装 prompt 与 context")
+    seq_msg(6.52, 8.87, 3.95, "启动 turn loop")
+    seq_msg(8.87, 11.17, 4.45, "决定是否调用工具")
+    seq_msg(11.17, 8.87, 4.95, "tool result 回灌")
+    seq_msg(8.87, 6.52, 5.45, "继续 / 收敛")
 
     add_plain_box(
         slide,
-        0.35,
-        6.45,
-        12.6,
-        0.4,
+        0.75,
+        6.35,
+        12.0,
+        0.42,
         ["结论：目标、范围、约束、验证写得越清楚，越能稳定影响 prompt stack、turn loop 和 tool pipeline 的每一步。"],
         fill=ACCENT_SOFT,
         line_color=ACCENT,
-        size=12,
+        size=13,
     )
 
 
