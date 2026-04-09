@@ -17,6 +17,10 @@
 
 - [09-Claude Code 使用技巧与注意事项.md](/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude%20Code%20使用技巧与注意事项.md)
 
+## 分享提纲
+
+- [10-Claude Code 源码深度解读-分享提纲.md](/Users/bobo/code/claude-code-source-code/docs/zh/10-Claude%20Code%20源码深度解读-分享提纲.md)
+
 ## 专题
 
 - [01-遥测与隐私分析.md](/Users/bobo/code/claude-code-source-code/docs/zh/01-遥测与隐私分析.md)
