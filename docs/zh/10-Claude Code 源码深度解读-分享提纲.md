@@ -1,4 +1,4 @@
-# Claude Code：更好地使用它的源码解读提纲
+# Claude Code 源码调研提纲
 
 这份提纲服务的目标不是“让听众完整理解 Claude Code 源码”，而是：
 
@@ -7,15 +7,24 @@
 因此，这份提纲采用下面的主次关系：
 
 - 源码架构与工作流：前置讲清，但不占过高比重
-- 产出、使用方式、使用技巧：作为主线
+- 功能、产出、使用方式、开发流程建议：作为主线
 - 代码证据：为技巧和判断提供支撑，不单独做代码炫技
 
 推荐总时长：50-65 分钟  
-推荐总页数：48 页左右
+推荐总页数：45-55 页
 
 对应正文：
 
 - [09-Claude Code 源码深度解读-文档.md](/Users/bobo/code/claude-code-source-code/docs/zh/09-Claude%20Code%20源码深度解读-文档.md)
+
+建议最终 PPT 主结构：
+
+1. 总体架构：先讲整体架构，再讲主要子架构和模块
+2. 工作流程：先讲总流程，再讲关键步骤和子流程
+3. 功能介绍：功能分类列表，主要功能介绍
+4. 产出：主要产出，适合的任务
+5. 开发流程建议：怎样组织任务、边界、验证和协作
+6. 代码走读概略：代码架构、主要模块、建议阅读顺序
 
 ## 术语对照
 
@@ -44,10 +53,10 @@
 ## 第 1 页：封面
 
 **标题**
-- `Claude Code：更好地使用它的源码解读`
+- `Claude Code 源码调研`
 
 **副标题**
-- `总体架构、工作流程、功能设计、使用技巧与协作建议`
+- `总体架构、工作流程、功能设计、产出形态与开发流程建议`
 
 **这一页要讲什么**
 - 这不是单纯的源码分享。
@@ -56,7 +65,7 @@
 **希望听众带走什么**
 - 后面讲代码，不是为了讲代码本身，而是为了推出更有效的使用方式。
 
-## 第 2 页：这场分享真正要解决的问题
+## 第 2 页：这次调研真正要解决的问题
 
 **这一页要回答的问题**
 - 为什么同样是 Claude Code，有的人越用越顺，有的人越用越乱。
@@ -121,26 +130,24 @@
 **希望听众带走什么**
 - 后面所有技巧，本质上都是在影响这条主执行链。
 
-## 第 5 页：Claude Code 和 demo agent 的本质差别
+## 第 5 页：整体架构中的主要模块
 
 **这一页要回答的问题**
-- 它和一般 agent demo 的根本差异是什么。
+- Claude Code 的整体架构拆开之后，最值得优先认识哪些模块。
 
 **核心内容**
-- demo agent 的中心是“让模型调工具”。
-- Claude Code 的中心是“让一条执行轨迹在复杂条件下仍然可持续”。
-- 因此它显式处理：
-  - 恢复
-  - 压缩
-  - 权限链
-  - 多执行体
-  - 观测与诊断
+- 启动装配：`main.tsx`
+- 会话宿主：`QueryEngine.ts`
+- 轮次推进：`query.ts`
+- 工具执行链：`toolExecution.ts`
+- 控制面：settings / auth / policy / prompt
+- 扩展与续航：skills / MCP / plugins / transcript / recovery / tasks
 
 **代码理解支撑**
-- `query.ts` 的迁移分支、`conversationRecovery.ts`、`toolExecution.ts`、`task/framework.ts` 都在说明它不是 demo 形态。
+- 这些模块共同定义了 Claude Code 的真实运行形态，也构成了后面工作流程、功能和使用技巧的代码基础。
 
 **希望听众带走什么**
-- 这份源码最稀缺的价值，是它已经为长期工作付过账。
+- 后面的工作流程和主要功能，都会回到这些核心模块上。
 
 ## 第 6 页：`main.tsx`、`QueryEngine.ts`、`query.ts` 的分工
 
@@ -381,7 +388,7 @@ type State = {
 
 ---
 
-# 第三部分：功能列表与产出（8 页）
+# 第三部分：功能介绍（功能分类列表 + 主要功能）
 
 ## 第 17 页：Claude Code 有哪些功能面
 
@@ -402,100 +409,29 @@ type State = {
 **希望听众带走什么**
 - 功能多本身不重要，关键是这些能力能围绕主执行链协同。
 
-## 第 18 页：从用户视角看，Claude Code 最典型的产出是什么
+## 第 18 页：功能分类小结
 
 **这一页要回答的问题**
-- Claude Code 最擅长产出什么结果。
+- 为什么要先按功能面理解 Claude Code，而不是直接按目录或文件讲。
 
 **核心内容**
-- 代码修改
-- 代码解释与定位结论
-- 调试与排障结论
-- 命令执行与验证结果
-- 计划、任务拆解、review 结论
-- 结构化输出与工作卡
+- 因为功能面更接近用户会感知到的能力：
+  - 交互
+  - 执行
+  - 扩展
+  - 控制
+  - 续航
+  - 可观测性
 
 **代码理解支撑**
-- commands、Edit/Read/Bash、structured output、Plan Mode、task runtime 在代码里都明确存在，说明它默认就围绕工程结果设计。
+- 这些功能面都可以回到 commands、tools、MCP、policy、recovery、profiling 等模块，不是随意分类。
 
 **希望听众带走什么**
-- Claude Code 最适合被当作工程产出生成器。
-
-## 第 19 页：哪些任务特别适合 Claude Code
-
-**这一页要回答的问题**
-- 哪类任务最能发挥这套系统的优势。
-
-**核心内容**
-- 局部修复与重构
-- 多文件追踪与定位
-- 命令执行与验证
-- 需要拆阶段推进的任务
-- 需要形成“代码 + 解释 + 验证”的任务
-
-**代码理解支撑**
-- 这些任务之所以适合，是因为它们天然贴合 `tool pipeline + plan + task runtime + recovery` 这几条主能力链。
-
-**希望听众带走什么**
-- 越像工程任务，Claude Code 越容易发挥。
-
-## 第 20 页：哪些任务不适合用 Claude Code 直接硬做
-
-**这一页要回答的问题**
-- 哪些任务形态会让 Claude Code 失稳。
-
-**核心内容**
-- 目标极度模糊
-- 范围完全不受限
-- 对输出形式没有约束
-- 要求它自行理解隐含边界
-- 高风险动作但没给确认规则
-
-**代码理解支撑**
-- 由于 prompt stack、tool pipeline、permission chain 都期待更明确的任务边界，模糊任务天然更容易产生漂移。
-
-**希望听众带走什么**
-- Claude Code 不是不能做难任务，而是难任务更需要结构化地给它。
-
-## 第 21 页：为什么它能稳定地产出这些结果
-
-**这一页要回答的问题**
-- Claude Code 为什么比普通聊天系统更容易产出稳定工程结果。
-
-**核心内容**
-- 默认角色是工程代理
-- 工具执行受约束
-- 结果可进入 transcript / compact / recovery
-- plan、task、memory 支持多阶段工作
-
-**代码支撑**
-- [src/constants/prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts)
-- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
-- [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
-- [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
-
-**代码理解支撑**
-- 角色定义、执行链、续航链和任务链一起存在，决定了 Claude Code 更容易产出“工作结果”，而不是发散回答。
-
-**希望听众带走什么**
-- 稳定产出来自运行时结构，不只是模型强。
-
-## 第 22 页：用户视角功能小结
-
-**这一页要回答的问题**
-- 从用户视角，前面这些功能和产出能压成什么结论。
-
-**核心内容**
-- Claude Code 最适合用来推进工程任务
-- 它特别适合产出“代码 + 解释 + 验证 + 计划”
-- 它不适合完全模糊、完全无边界的自由发挥
-
-**希望听众带走什么**
-- 先理解产出形态，再谈技巧，效果会更稳。
+- 先理解功能面，再理解主要功能，后面讲产出和建议时会更自然。
 
 ---
 
-# 第四部分：重要功能详细介绍（14 页）
+# 第三部分续：主要功能介绍
 
 ## 第 23 页：Prompt Stack（提示词栈）
 
@@ -786,9 +722,104 @@ export type ContentReplacementState = {
 
 ---
 
-# 第五部分：开发流程建议（13 页）
+# 第四部分：产出（主要产出 + 适合的任务）
 
-## 第 36 页：为什么要单独讲“开发流程建议”
+## 第 36 页：从用户视角看，Claude Code 最典型的产出是什么
+
+**这一页要回答的问题**
+- Claude Code 最擅长产出什么结果。
+
+**核心内容**
+- 代码修改
+- 代码解释与定位结论
+- 调试与排障结论
+- 命令执行与验证结果
+- 计划、任务拆解、review 结论
+- 结构化输出与工作卡
+
+**代码理解支撑**
+- commands、Edit/Read/Bash、structured output、Plan Mode、task runtime 在代码里都明确存在，说明它默认就围绕工程结果设计。
+
+**希望听众带走什么**
+- Claude Code 最适合被当作工程产出生成器。
+
+## 第 37 页：哪些任务特别适合 Claude Code
+
+**这一页要回答的问题**
+- 哪类任务最能发挥这套系统的优势。
+
+**核心内容**
+- 局部修复与重构
+- 多文件追踪与定位
+- 命令执行与验证
+- 需要拆阶段推进的任务
+- 需要形成“代码 + 解释 + 验证”的任务
+
+**代码理解支撑**
+- 这些任务之所以适合，是因为它们天然贴合 `tool pipeline + plan + task runtime + recovery` 这几条主能力链。
+
+**希望听众带走什么**
+- 越像工程任务，Claude Code 越容易发挥。
+
+## 第 38 页：哪些任务不适合用 Claude Code 直接硬做
+
+**这一页要回答的问题**
+- 哪些任务形态会让 Claude Code 失稳。
+
+**核心内容**
+- 目标极度模糊
+- 范围完全不受限
+- 对输出形式没有约束
+- 要求它自行理解隐含边界
+- 高风险动作但没给确认规则
+
+**代码理解支撑**
+- 由于 prompt stack、tool pipeline、permission chain 都期待更明确的任务边界，模糊任务天然更容易产生漂移。
+
+**希望听众带走什么**
+- Claude Code 不是不能做难任务，而是难任务更需要结构化地给它。
+
+## 第 39 页：为什么它能稳定地产出这些结果
+
+**这一页要回答的问题**
+- Claude Code 为什么比普通聊天系统更容易产出稳定工程结果。
+
+**核心内容**
+- 默认角色是工程代理
+- 工具执行受约束
+- 结果可进入 transcript / compact / recovery
+- plan、task、memory 支持多阶段工作
+
+**代码支撑**
+- [src/constants/prompts.ts](/Users/bobo/code/claude-code-source-code/src/constants/prompts.ts)
+- [src/services/tools/toolExecution.ts](/Users/bobo/code/claude-code-source-code/src/services/tools/toolExecution.ts)
+- [src/utils/sessionStorage.ts](/Users/bobo/code/claude-code-source-code/src/utils/sessionStorage.ts)
+- [src/utils/messages.ts](/Users/bobo/code/claude-code-source-code/src/utils/messages.ts)
+
+**代码理解支撑**
+- 角色定义、执行链、续航链和任务链一起存在，决定了 Claude Code 更容易产出“工作结果”，而不是发散回答。
+
+**希望听众带走什么**
+- 稳定产出来自运行时结构，不只是模型强。
+
+## 第 40 页：产出小结
+
+**这一页要回答的问题**
+- 从用户视角，前面这些产出和适用任务能压成什么结论。
+
+**核心内容**
+- Claude Code 最适合用来推进工程任务
+- 它特别适合产出“代码 + 解释 + 验证 + 计划”
+- 它不适合完全模糊、完全无边界的自由发挥
+
+**希望听众带走什么**
+- 先理解产出形态，再谈技巧，效果会更稳。
+
+---
+
+# 第五部分：开发流程建议
+
+## 第 41 页：为什么要单独讲“开发流程建议”
 
 **这一页要回答的问题**
 - 为什么最后还要讲“建议”，而不是停在架构和功能。
@@ -800,7 +831,7 @@ export type ContentReplacementState = {
 **希望听众带走什么**
 - 这一部分不是“经验汇总”，而是从源码约束倒推出的协作方式。
 
-## 第 37 页：建议一：把任务组织成工程任务，而不是聊天请求
+## 第 42 页：建议一：把任务组织成工程任务，而不是聊天请求
 
 **核心内容**
 - 把任务写成：目标、范围、约束、验证
@@ -815,7 +846,7 @@ The user will primarily request you to perform software engineering tasks.
 **代码理解支撑**
 - system prompt 已经把用户请求定义成工程任务，因此任务表达越工程化，Claude Code 越接近默认最佳状态。
 
-## 第 38 页：建议二：先读代码，再改代码
+## 第 43 页：建议二：先读代码，再改代码
 
 **核心内容**
 - 明确要求先读关键文件
@@ -830,7 +861,7 @@ In general, do not propose changes to code you haven't read.
 **代码理解支撑**
 - 这不是使用习惯，而是 prompt stack 明确写出的默认行为。
 
-## 第 39 页：建议三：最小改动，优先复用
+## 第 44 页：建议三：最小改动，优先复用
 
 **核心内容**
 - 明确要求最小必要改动
@@ -846,7 +877,7 @@ Don't create helpers, utilities, or abstractions for one-time operations.
 **代码理解支撑**
 - Claude Code 默认就反对无边界“优化”和一锤子抽象，因此这条建议是顺着系统默认行为走。
 
-## 第 40 页：建议四：专用工具优先，Bash 后置
+## 第 45 页：建议四：专用工具优先，Bash 后置
 
 **核心内容**
 - 有 dedicated tools 时优先 dedicated tools
@@ -861,7 +892,7 @@ Do NOT use the Bash tool when a relevant dedicated tool is provided.
 **代码理解支撑**
 - tool pipeline 与 BashTool 安全层共同说明：Claude Code 不是鼓励随时走 shell，而是鼓励可审查的执行路径。
 
-## 第 41 页：建议五：验证要单独要求，而且结果要如实汇报
+## 第 46 页：建议五：验证要单独要求，而且结果要如实汇报
 
 **核心内容**
 - 验证不是默认一定会发生
@@ -876,7 +907,7 @@ Report outcomes faithfully...
 **代码理解支撑**
 - 默认 prompt 直接约束结果汇报，因此“把验证写出来”是利用系统已有规则，而不是额外施压。
 
-## 第 42 页：建议六：高风险动作一定要把确认规则写清楚
+## 第 47 页：建议六：高风险动作一定要把确认规则写清楚
 
 **核心内容**
 - 删除、覆盖、push、外发等动作要明确确认
@@ -891,7 +922,7 @@ Carefully consider the reversibility and blast radius of actions.
 **代码理解支撑**
 - BashTool prompt、tool pipeline、permissions 都表明高风险动作是单独对待的，因此用户必须把这条边界写清。
 
-## 第 43 页：建议七：复杂任务先走 Plan Mode
+## 第 48 页：建议七：复杂任务先走 Plan Mode
 
 **核心内容**
 - 先探索、再计划、后实现
@@ -903,7 +934,7 @@ Carefully consider the reversibility and blast radius of actions.
 **代码理解支撑**
 - Plan workflow 明确把“探索现有实现、更新计划、再问缺失信息”做成了独立流程，这正是复杂任务更稳的原因。
 
-## 第 44 页：建议八：独立查询允许并行，长任务允许分阶段推进
+## 第 49 页：建议八：独立查询允许并行，长任务允许分阶段推进
 
 **核心内容**
 - 独立查询可以 parallel
@@ -916,7 +947,7 @@ Carefully consider the reversibility and blast radius of actions.
 **代码理解支撑**
 - 并行工具调用和 task runtime 都是系统一级能力，因此任务节奏设计会直接影响 Claude Code 的发挥。
 
-## 第 45 页：建议九：哪些任务最适合直接交给 Claude Code
+## 第 50 页：建议九：哪些任务最适合直接交给 Claude Code
 
 **核心内容**
 - 局部修复
@@ -927,7 +958,7 @@ Carefully consider the reversibility and blast radius of actions.
 **代码理解支撑**
 - 这些任务正好贴合 prompt stack、tool pipeline、task runtime 和 recovery 的优势区间。
 
-## 第 46 页：建议十：哪些任务要谨慎交给 Claude Code
+## 第 51 页：建议十：哪些任务要谨慎交给 Claude Code
 
 **核心内容**
 - 完全模糊的探索
@@ -938,7 +969,7 @@ Carefully consider the reversibility and blast radius of actions.
 **代码理解支撑**
 - Claude Code 不是不能做，而是这类任务更容易让 prompt stack、tool pipeline 和权限链都处在不稳定状态。
 
-## 第 47 页：团队协作时，应该把 Claude Code 当成什么角色
+## 第 52 页：团队协作时，应该把 Claude Code 当成什么角色
 
 **核心内容**
 - 工程代理
@@ -949,7 +980,7 @@ Carefully consider the reversibility and blast radius of actions.
 **代码理解支撑**
 - commands、Plan Mode、task runtime、structured output、tool pipeline 都说明它更适合作为“协作型工程执行体”，而不是单纯聊天机器人。
 
-## 第 48 页：总结页
+## 第 53 页：开发流程建议小结
 
 **核心内容**
 - 先用少量源码理解建立正确模型
@@ -958,3 +989,59 @@ Carefully consider the reversibility and blast radius of actions.
 
 **希望听众带走什么**
 - Claude Code 最值得学的，不只是它“会什么”，而是你怎样组织任务，才能让它稳定地产出高质量工程结果。
+
+---
+
+# 第六部分：代码走读概略
+
+## 第 54 页：代码组织和架构概略
+
+**这一页要回答的问题**
+- 如果听众后续要自己读代码，应该先怎么建立代码组织视图。
+
+**核心内容**
+- 启动与装配：`main.tsx`
+- 会话与执行：`QueryEngine.ts`、`query.ts`
+- 工具与命令：`Tool.ts`、`tools.ts`、`commands.ts`
+- 续航与恢复：`sessionStorage.ts`、`conversationRecovery.ts`、`compact/*`
+- 扩展与控制：settings、auth、policy、MCP、plugins、skills
+
+**希望听众带走什么**
+- 先看代码分层，再看实现细节，效率会高很多。
+
+## 第 55 页：建议的代码走读顺序
+
+**这一页要回答的问题**
+- 如果只给听众一条阅读路径，应该怎样安排顺序。
+
+**核心内容**
+1. `main.tsx`
+2. `QueryEngine.ts`
+3. `query.ts`
+4. `toolExecution.ts`
+5. `compact / recovery`
+6. `commands / tools / MCP / tasks`
+
+**代码理解支撑**
+- 这条顺序是从装配、宿主、执行、恢复、扩展逐层展开，最容易建立完整心智模型。
+
+**希望听众带走什么**
+- 代码走读不应该按目录平铺，而应该按运行链和控制链阅读。
+
+## 第 56 页：主要模块与重点文件
+
+**这一页要回答的问题**
+- 如果只能记住一组文件，应该记住哪些。
+
+**核心内容**
+- `main.tsx`
+- `QueryEngine.ts`
+- `query.ts`
+- `toolExecution.ts`
+- `BashTool.tsx`
+- `compact.ts` / `microCompact.ts`
+- `sessionStorage.ts` / `conversationRecovery.ts`
+- `messages.ts`
+
+**希望听众带走什么**
+- 这组文件足以支撑一次高质量的 Claude Code 源码走读。
