@@ -835,10 +835,69 @@ export type ContentReplacementRecord = {
 - 用 skills 打开条件激活的能力面；用 attachments 动态组装当前轮上下文。
 
 **实现原理**
-- skills 会按路径、上下文和 compact 结果被激活与保留。
-- attachments 会注入 memories、skill delta、task messages、system reminders。
+- skills 的加载分成四层：
+  - **启动时肯定加载**：
+    - `bundled skills`
+    - 当前可读到的 `managed / user / project / --add-dir` 下的普通 skills
+    - 已启用插件提供的 `plugin skills`
+  - **启动时只登记、不立即激活**：
+    - 带 `paths` frontmatter 的 `conditional skills`
+  - **运行时可能动态加载**：
+    - 随文件操作发现的 nested `.claude/skills`
+    - MCP 提供的 skills
+  - **真正进入 prompt/context**：
+    - 只有在 skill 被选中或调用时，`getPromptForCommand()` 才把 skill 文本真正注入当前轮
+- attachments 的加载更偏 `turn-scoped`：
+  - **每轮都会重算的**：
+    - system reminders
+    - plan / task / todo / IDE 相关 attachment
+    - 可用 skill / MCP / agent delta
+  - **条件成立时才会注入的**：
+    - relevant memories
+    - conditional rules / nested memory
+    - teammate mailbox messages
+    - pending task messages
+  - **下一轮可能自动消失的**：
+    - 只在当前 turn 成立的 reminder、memory、task attachment
+- 换句话说：
+  - skills 更像“能力先注册，再按时机激活”
+  - attachments 更像“每轮临时拼装当前工作面”
 
 **关键代码片段**
+
+```ts
+export const getSkillDirCommands = memoize(
+  async (cwd: string): Promise<Command[]> => {
+    const userSkillsDir = join(getClaudeConfigHomeDir(), 'skills')
+    const managedSkillsDir = join(getManagedFilePath(), '.claude', 'skills')
+    const projectSkillsDirs = getProjectDirsUpToHome('skills', cwd)
+    ...
+  },
+)
+```
+
+```ts
+for (const skill of deduplicatedSkills) {
+  if (
+    skill.type === 'prompt' &&
+    skill.paths &&
+    skill.paths.length > 0 &&
+    !activatedConditionalSkillNames.has(skill.name)
+  ) {
+    newConditionalSkills.push(skill)
+  } else {
+    unconditionalSkills.push(skill)
+  }
+}
+```
+
+```ts
+if (skillIgnore.ignores(relativePath)) {
+  dynamicSkills.set(name, skill)
+  conditionalSkills.delete(name)
+  activatedConditionalSkillNames.add(name)
+}
+```
 
 ```ts
 export function createSkillCommand({...}): Command {
@@ -870,17 +929,26 @@ function getCriticalSystemReminderAttachment(
 **代码支撑**
 - [src/utils/skills/loadSkillsDir.ts](/Users/bobo/code/claude-code-source-code/src/utils/skills/loadSkillsDir.ts)
 - [src/utils/attachments.ts](/Users/bobo/code/claude-code-source-code/src/utils/attachments.ts)
+- [src/commands.ts](/Users/bobo/code/claude-code-source-code/src/commands.ts)
 
 **使用技巧**
 - skill 更适合用于有明显任务边界的场景。
 - 当前轮的任务组织方式会直接影响 Claude Code 看到的上下文。
 - 任务阶段、文件范围和关键提醒，最好显式表达。
+- 如果希望某类 skill 更容易被激活，最好显式给出：
+  - 当前涉及的目录或文件
+  - 当前任务属于哪个阶段
+  - 当前最重要的约束和输出目标
+- 如果任务依赖 memory / task / reminder 一类 attachment，就不要假设它们会永久常驻；它们更像当前轮按条件拼进来的工作材料。
 
 **代码理解支撑**
-- skills 和 attachments 一起说明，Claude Code 每轮看到的不是静态聊天记录，而是被运行时重新拼出的工作面。
+- `getSkillDirCommands()` 说明普通 skills 会在启动构建 commands 时批量加载，但 `conditional skills` 会先放进待激活集合，不会立即加入可见能力面。
+- `activateConditionalSkillsForPaths()` 说明带 `paths` 的 skill 只有在命中文件路径后才会进入 `dynamicSkills`。
+- `createSkillCommand()` 说明 skill 的 markdown 不是启动时就直接进 prompt，而是先编译成 `prompt command`，等真正调用时才注入当前轮。
+- attachments 这一侧则完全是 turn-scoped 的：每轮根据 memory、task、rules、mailbox、system reminder 等条件重新构造，所以 Claude Code 当前轮看到的上下文，本质上是“运行时临时工作面”，不是静态对话历史。
 
 **希望听众带走什么**
-- 会组织上下文，就会更好地用 Claude Code。
+- 会组织文件范围、任务阶段和当前约束，就更容易让正确的 skills 被激活、让正确的 attachments 出现在当前轮。
 
 ## 第 21 页：Permissions / Hooks / Classifier
 
