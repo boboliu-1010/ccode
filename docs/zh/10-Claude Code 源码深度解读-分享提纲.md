@@ -847,6 +847,15 @@ export type ContentReplacementRecord = {
     - MCP 提供的 skills
   - **真正进入 prompt/context**：
     - 只有在 skill 被选中或调用时，`getPromptForCommand()` 才把 skill 文本真正注入当前轮
+- 换成“用户视角能看到什么”可以再压成两类：
+  - **肯定会在启动后进入基础命令构建的**：
+    - `bundled skills`
+    - 当前可扫描到、且不带 `paths` 条件的本地 skills
+    - 已正常启用的 plugin skills
+  - **不保证一开始就出现的**：
+    - 带 `paths` 的 `conditional skills`
+    - 运行时根据文件路径才发现的 nested skills
+    - 依赖 MCP 连接状态的 MCP skills
 - attachments 的加载更偏 `turn-scoped`：
   - **每轮都会重算的**：
     - system reminders
@@ -945,6 +954,7 @@ function getCriticalSystemReminderAttachment(
 - `getSkillDirCommands()` 说明普通 skills 会在启动构建 commands 时批量加载，但 `conditional skills` 会先放进待激活集合，不会立即加入可见能力面。
 - `activateConditionalSkillsForPaths()` 说明带 `paths` 的 skill 只有在命中文件路径后才会进入 `dynamicSkills`。
 - `createSkillCommand()` 说明 skill 的 markdown 不是启动时就直接进 prompt，而是先编译成 `prompt command`，等真正调用时才注入当前轮。
+- `commands.ts` 里的 `getSkills()` 和 `getCommands()` 还说明了一点：即使 skills 已经被加载，只有满足 availability / isEnabled 条件、并且在当前 command surface 中可见时，它们才会真正出现在模型或用户可调用的能力集合里。
 - attachments 这一侧则完全是 turn-scoped 的：每轮根据 memory、task、rules、mailbox、system reminder 等条件重新构造，所以 Claude Code 当前轮看到的上下文，本质上是“运行时临时工作面”，不是静态对话历史。
 
 **希望听众带走什么**
