@@ -21,6 +21,10 @@
 
 - [10-Claude Code 源码深度解读-分享提纲.md](/Users/bobo/code/claude-code-source-code/docs/zh/10-Claude%20Code%20源码深度解读-分享提纲.md)
 
+## 设计文档
+
+- [11-pay-sh-gateway-设计文档.md](/Users/bobo/code/claude-code-source-code/docs/zh/11-pay-sh-gateway-设计文档.md)
+
 ## 专题
 
 - [01-遥测与隐私分析.md](/Users/bobo/code/claude-code-source-code/docs/zh/01-遥测与隐私分析.md)
