@@ -167,6 +167,165 @@ remaining_calls
 
 每次请求消耗 session allowance，超出后重新返回 `402`。
 
+### 4.4 pay 仓库里的 gateway server 实现
+
+从 `solana-foundation/pay` 主仓库看，`pay server start <spec.yml>` 启动的是一个 Axum HTTP gateway。它的核心行为不是“业务 server”，而是一个 payment-aware reverse proxy。
+
+启动流程：
+
+```text
+pay server start provider.yml
+  -> 读取 YAML spec
+  -> 解析成 ApiSpec
+  -> 加载 OpenAPI / Discovery 文档（可选）
+  -> 根据 endpoints[] 过滤 OpenAPI
+  -> 加载 operator / signer / recipient / currencies / network
+  -> 初始化 MPP challenge server
+  -> 注册 payment middleware
+  -> 注册 reverse proxy handler
+  -> 启动 HTTP server
+```
+
+相关代码要点：
+
+```rust
+let contents = std::fs::read_to_string(expanded.as_ref())?;
+let api: ApiSpec = serde_yml::from_str(&contents)?;
+```
+
+```rust
+pay_core::server::openapi::filter_to_endpoints(&mut doc, &api.endpoints);
+pay_core::server::openapi::prune_unused_components(&mut doc);
+pay_core::server::openapi::strip_upstream_auth(&mut doc);
+```
+
+这说明 `endpoints[]` 在 runtime 里不仅是展示信息，而是 gateway 暴露能力的 allowlist。OpenAPI 会被过滤到只剩 YAML 允许的 endpoint，upstream auth 也会被剥掉，因为认证由 gateway 内部处理。
+
+支付中间件流程：
+
+```text
+incoming request
+  -> 根据 host 找 ApiSpec
+  -> 根据 method + path 找 endpoint
+  -> endpoint 没有 metering：直接 next / proxy
+  -> endpoint 有 metering 但没有 Authorization：返回 402 challenge
+  -> endpoint 有 Authorization：解析并验证 payment credential
+  -> 验证通过：next / proxy upstream
+  -> response 加 Payment-Receipt
+```
+
+代码要点：
+
+```rust
+let exact_match = metering::find_endpoint(api, match_method, &path);
+let endpoint = exact_match.or_else(|| {
+    if accepts_html {
+        metering::find_endpoint_by_path(api, &path)
+    } else {
+        None
+    }
+});
+let metering_config = endpoint.and_then(|ep| ep.metering.as_ref());
+```
+
+```rust
+match auth_header {
+    None => charge_challenge_response(...),
+    Some(auth_value) => handle_charge_authorization(...).await,
+}
+```
+
+未支付时生成 challenge：
+
+```rust
+let price = metering::resolve_price(meter, props, variant_hint, None);
+let splits = resolve_charge_splits(mpp, meter, api, request.uri, &amount);
+let challenge = mpp.charge_with_options(
+    &amount,
+    solana_mpp::server::ChargeOptions {
+        description,
+        splits,
+        ..Default::default()
+    },
+)?;
+```
+
+已支付时验证并放行：
+
+```rust
+let credential = parse_authorization(auth_value)?;
+match mpp.verify_credential(&credential).await {
+    Ok(receipt) => {
+        let mut response = next.run(req).await;
+        response.headers_mut().insert(PAYMENT_RECEIPT_HEADER, v);
+        return response;
+    }
+    Err(e) => ...
+}
+```
+
+转发 upstream 的 proxy 层会：
+
+- 根据 `ApiSpec.routing` 构造 upstream URL。
+- 去掉 hop-by-hop headers 和 payment headers。
+- 注入 upstream auth。
+- 转发 body。
+- 返回 upstream response。
+
+代码要点：
+
+```rust
+const STRIP_HEADERS: &[&str] = &[
+    "host",
+    "connection",
+    "transfer-encoding",
+    "authorization",
+    "payment-signature",
+    "payment-required",
+];
+```
+
+```rust
+match routing.auth() {
+    Some(AuthConfig::Header { .. } | AuthConfig::QueryParam { .. } | AuthConfig::Hmac { .. }) => {
+        apply_prepared_request_auth(...)?;
+    }
+    Some(AuthConfig::Oauth2 { .. }) => { ... }
+    Some(AuthConfig::AccessToken { .. }) => { ... }
+    _ => {}
+}
+```
+
+所以 Pay 的 gateway server 可以概括为：
+
+> YAML 驱动的 payment-gated reverse proxy：通过 `endpoints[]` 决定暴露面，通过 `metering` 决定是否收费，通过 MPP challenge / credential 决定是否放行，通过 routing/auth 转发到 upstream。
+
+### 4.5 一次售卖请求的时序图
+
+```mermaid
+sequenceDiagram
+  participant Buyer as Buyer / Agent
+  participant Pay as pay CLI / MCP
+  participant Gateway as pay server gateway
+  participant MPP as MPP / Facilitator
+  participant Upstream as Seller Upstream API
+
+  Buyer->>Pay: 调用付费 API
+  Pay->>Gateway: HTTP request
+  Gateway->>Gateway: 匹配 ApiSpec + endpoint
+  Gateway->>Gateway: endpoint 有 metering，解析价格
+  Gateway-->>Pay: 402 Payment Required + WWW-Authenticate
+  Pay->>Buyer: 请求本地钱包授权
+  Buyer-->>Pay: 授权签名
+  Pay->>Gateway: retry with Authorization credential
+  Gateway->>MPP: verify_credential
+  MPP-->>Gateway: receipt
+  Gateway->>Upstream: proxy request + upstream auth
+  Upstream-->>Gateway: business response
+  Gateway-->>Pay: response + Payment-Receipt
+  Pay-->>Buyer: 返回 API 结果
+```
+
 ## 5. 协议适配
 
 ### 5.1 x402
@@ -744,6 +903,44 @@ Seller 提交 provider.yaml
 
 - GitHub PR：适合技术型 provider。
 - Web Console：适合普通 API 供应商，由后台生成 provider spec。
+
+### 14.4.1 卖家注册到上架的时序图
+
+```mermaid
+sequenceDiagram
+  participant Seller as Seller / Provider
+  participant Portal as Platform Portal
+  participant Validator as Validator / CI
+  participant Gateway as Gateway Runtime
+  participant Catalog as Catalog Index
+  participant Reviewer as Reviewer
+
+  Seller->>Portal: 注册账号，提交 provider 基本信息
+  Seller->>Portal: 填写 service_url、endpoint、pricing、payment、usage notes
+  Portal->>Portal: 生成 PAY.md 和 provider.yml preview
+  Portal->>Validator: 静态校验 frontmatter / YAML / OpenAPI
+  Validator-->>Portal: 返回字段错误或通过
+  Portal->>Gateway: sandbox 部署 provider.yml
+  Gateway->>Gateway: 启动 route + metering + 402 challenge
+  Validator->>Gateway: smoke test 免费 endpoint
+  Validator->>Gateway: probe metered endpoint，确认返回 402
+  Validator->>Gateway: sandbox payment retry，确认 paid response
+  Validator-->>Portal: 生成 catalog preview 和 validation report
+  Portal->>Reviewer: 提交人工审核
+  Reviewer-->>Portal: approve / request changes
+  Portal->>Catalog: 发布 PAY.md / catalog index
+  Portal->>Gateway: 发布 production provider.yml / reload route
+  Portal-->>Seller: 上架完成，seller dashboard 开通
+```
+
+这张图对应 Pay 仓库里的实际工具链：
+
+- `pay server scaffold provider.yml`：生成 runtime gateway 配置。
+- `pay server start provider.yml`：启动 payment gateway。
+- `pay catalog scaffold <fqn> <openapi_url>`：生成 `PAY.md`。
+- `pay skills build`：构建 catalog index。
+- `pay skills probe`：探测 endpoint 和 402 challenge。
+- `pay skills validate`：PR / CI 阶段的发布门禁。
 
 ### 14.5 表单字段设计
 
