@@ -200,6 +200,13 @@ gateway 需要支持两类：
 
 gateway 不应该把计费逻辑散落在代码里，应通过 provider spec 配置 endpoint、价格和上游映射。
 
+从 `solana-foundation/pay` 仓库看，Pay 实际把 provider 配置拆成两层：
+
+- `provider.yml`：运行时 gateway spec，给 `pay server start <spec.yml>` 使用，决定路由、上游代理、endpoint allowlist、计费和分账。
+- `PAY.md`：catalog listing，放在 `pay-skills/providers/<operator>/<name>/PAY.md`，用于公开目录、搜索、agent usage notes 和 PR 校验。
+
+这两层不能混为一个表单。`provider.yml` 面向 gateway 执行，`PAY.md` 面向 discovery 和 agent 使用。
+
 示例：
 
 ```yaml
@@ -547,6 +554,79 @@ gateway_response_sent
 
 gateway 如果要做成 pay.sh 风格的平台，卖家和平台的协作不能停留在“给一个 API 地址”。卖家需要提交一个可执行的 provider contract，平台负责把它变成 catalog entry、gateway route、payment requirements 和审计对象。
 
+### 14.0 Pay 仓库里的实际表单形态
+
+从 `solana-foundation/pay` 主仓库看，卖家上架至少涉及两类文件。
+
+第一类是运行时 gateway YAML，由命令生成：
+
+```sh
+pay server scaffold provider.yml
+```
+
+仓库里的 scaffold 模板字段包括：
+
+```yaml
+name: my-api
+subdomain: myapi
+title: "My API"
+description: "API description"
+category: ai_ml
+version: v1
+forward_url: https://api.example.com
+accounting: pooled
+
+endpoints:
+  - method: GET
+    path: "v1/health"
+    description: "Health check"
+
+  - method: POST
+    path: "v1/generate"
+    description: "Generate content"
+    metering:
+      dimensions:
+        - direction: usage
+          unit: requests
+          scale: 1
+          tiers:
+            - price_usd: 0.001
+```
+
+第二类是 catalog listing，由命令生成：
+
+```sh
+pay catalog scaffold <operator>/<name> https://example.com/openapi.json
+```
+
+仓库里的 scaffold 会生成 `PAY.md`，核心 frontmatter 是：
+
+```markdown
+---
+name: my-api
+title: "My API"
+description: "One-sentence service description"
+use_case: "Use for ..."
+category: data
+service_url: https://my-api.example.com
+openapi:
+  url: https://my-api.example.com/openapi.json
+---
+
+## Spend-aware usage
+
+- Prefer narrow lookups over broad searches.
+- Reuse identifiers.
+- Cap result limits.
+```
+
+所以如果我们自己做表单，不应该只做一张“大而全”的表，而应该拆成：
+
+- 运行时接入表：生成 `provider.yml`。
+- 目录上架表：生成 `PAY.md`。
+- 可选 OpenAPI 上传：让平台从 OpenAPI 自动抽取 endpoint。
+- 安全与运营表：补充 agent 使用边界、退款、联系人和审核信息。
+
 ### 14.1 卖家需要提供什么
 
 卖家提交的核心材料是 `provider.yaml`，并配套 schema、示例和运行信息。
@@ -664,6 +744,203 @@ Seller 提交 provider.yaml
 
 - GitHub PR：适合技术型 provider。
 - Web Console：适合普通 API 供应商，由后台生成 provider spec。
+
+### 14.5 表单字段设计
+
+结合 Pay 仓库实际字段，表单建议拆成 6 步。
+
+#### Step 1：Provider Profile
+
+对应 catalog 的 `name / title / description / category / service_url`。
+
+必填字段：
+
+- `name`：机器可读短名，通常和目录文件名一致。
+- `title`：人类可读服务名。
+- `description`：64-255 字符，一句话说明服务返回什么。
+- `category`：必须来自允许枚举，例如 `ai_ml / data / search / maps / messaging / finance / security / storage / translation / other`。
+- `service_url`：生产 HTTPS 域名，不应是 localhost 或 IP。
+- `sandbox_service_url`：可选，但强烈建议提供。
+
+#### Step 2：Use Case & Agent Guidance
+
+对应 catalog 的 `use_case` 和 markdown body。
+
+必填字段：
+
+- `use_case`：32-255 字符，建议以 `Use for` 或 `Use when` 开头。
+- `when_to_use`：agent 什么时候应该选这个 provider。
+- `when_not_to_use`：哪些任务不适合。
+- `spend_aware_usage`：如何减少不必要付费调用。
+- `confirmation_required_cases`：哪些情况需要先问用户。
+
+Pay 的文档强调：markdown body 会在 `get_catalog_entry` 后被 agent 读取，所以这里不是营销文案，而是执行说明。
+
+#### Step 3：Endpoint Source
+
+两种方式二选一：
+
+```yaml
+endpoints:
+  - method: POST
+    path: v1/search
+    description: "Search records by keyword with structured filters and pagination"
+    pricing:
+      dimensions:
+        - direction: usage
+          unit: requests
+          scale: 1
+          tiers:
+            - price_usd: 0.01
+```
+
+或：
+
+```yaml
+openapi:
+  url: https://my-api.example.com/openapi.json
+```
+
+Pay 的 registry 要求 `endpoints` 和 `openapi` 二选一。小 API 可以手写 `endpoints`，有 OpenAPI 的 provider 应优先用 `openapi`，平台 build 时会解析 paths 和 methods，并通过 probe 重建 pricing / protocol / supported currency。
+
+#### Step 4：Runtime Gateway
+
+对应 `pay server start <spec.yml>` 的运行时 YAML。
+
+字段：
+
+- `subdomain`：gateway host routing。
+- `routing.type`：`proxy` 或 `respond`。
+- `routing.url` / `forward_url`：上游 API。
+- `routing.auth`：上游认证方式。
+- `operator.network`：`localnet` 或 `mainnet`。
+- `operator.currencies.usd`：例如 `["USDC", "USDT", "CASH"]`。
+- `operator.fee_payer`：是否由 gateway 支付 setup / settlement 费用。
+- `operator.recipient`：默认收款地址。
+- `operator.signer`：生产签名后端，例如 GCP KMS。
+- `recipients`：用于 payment splits 的收款人别名。
+- `session`：MPP session 配置。
+
+#### Step 5：Pricing & Splits
+
+Pay 的 runtime YAML 使用 `metering.dimensions` 表达价格。最常见的是按请求计费：
+
+```yaml
+metering:
+  dimensions:
+    - direction: usage
+      unit: requests
+      scale: 1
+      tiers:
+        - price_usd: 0.01
+```
+
+分账使用 `recipients` 和 `splits`：
+
+```yaml
+recipients:
+  partner:
+    account: "${PARTNER_WALLET}"
+    label: "Partner"
+
+endpoints:
+  - method: POST
+    path: "v1/report"
+    metering:
+      dimensions:
+        - direction: usage
+          unit: requests
+          scale: 1
+          tiers:
+            - price_usd: 0.10
+      splits:
+        - recipient: partner
+          percent: 20
+          memo: "Partner revenue share"
+```
+
+Pay 的约束很明确：
+
+- split recipient 必须在顶层 `recipients` 里存在。
+- split 只能设置 `amount` 或 `percent` 其中之一。
+- split 总额必须小于最低单价，保证主收款方仍然有正收入。
+- `price_usd / scale` 不能低于 6 位小数精度下限。
+
+#### Step 6：Validation & Publish
+
+Pay 仓库里有对应校验流程：
+
+```sh
+pay skills build . --output /tmp/pay-skills-dist --no-probe
+
+pay skills probe . \
+  --files providers/<operator>/<name>/PAY.md \
+  --currencies USDC,USDT
+
+pay skills validate . \
+  --files providers/<operator>/<name>/PAY.md \
+  --currencies USDC,USDT
+```
+
+平台表单提交后，应自动执行等价流程：
+
+- 静态 frontmatter 校验。
+- endpoint / OpenAPI 解析。
+- live probe。
+- Solana / stablecoin compatibility verdict。
+- pricing truthfulness check。
+- description length check。
+- provider response untrusted-content check。
+- catalog preview。
+
+### 14.6 pay.sh 表单最小字段清单
+
+如果要做一个和 Pay 仓库对齐的最小表单，字段应至少包括：
+
+```yaml
+catalog:
+  name:
+  title:
+  description:
+  use_case:
+  category:
+  service_url:
+  sandbox_service_url:
+  openapi_url:
+
+runtime:
+  subdomain:
+  routing_type:
+  upstream_url:
+  upstream_auth_method:
+  operator_network:
+  accepted_usd_currencies:
+  recipient:
+  fee_payer:
+
+endpoint:
+  method:
+  path:
+  description:
+  pricing_unit:
+  price_usd:
+  scale:
+
+safety:
+  spend_aware_usage:
+  confirmation_required_cases:
+  max_calls_per_task:
+  sensitive_data:
+  provider_output_is_untrusted:
+
+operations:
+  support_email:
+  status_page:
+  refund_policy:
+  dispute_contact:
+```
+
+这比普通 API marketplace 的表单更重，原因是它既要支持目录发现，也要直接驱动 gateway 和 agent 选择。
 
 ## 15. 钱流与结算模式
 
