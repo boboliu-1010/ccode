@@ -942,6 +942,274 @@ operations:
 
 这比普通 API marketplace 的表单更重，原因是它既要支持目录发现，也要直接驱动 gateway 和 agent 选择。
 
+### 14.7 字段规格总表
+
+这一节把表单字段整理成可交给产品和前端实现的规格。字段来源分两类：
+
+- `PAY.md frontmatter`：来自 `pay-skills` catalog，用于上架、搜索和 agent 选择。
+- `provider.yml runtime spec`：来自 `pay server start`，用于 gateway 运行、计费和代理。
+
+#### A. Catalog Profile
+
+生成目标：`PAY.md` frontmatter。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `name` | 是 | string | `PAY.md:name` | 机器可读 provider 名称 | 必须匹配文件名或目录 leaf |
+| `title` | 是 | string | `PAY.md:title` | 目录展示名 | 非空 |
+| `description` | 是 | string | `PAY.md:description` | 搜索和目录摘要 | 建议 64-255 字符，不以 `Use for` 开头 |
+| `use_case` | 是 | string | `PAY.md:use_case` | 告诉 agent 什么时候使用 | 建议 32-255 字符，以 `Use for` 或 `Use when` 开头 |
+| `category` | 是 | enum | `PAY.md:category` | 分类和搜索过滤 | 必须是允许枚举 |
+| `service_url` | 是 | URL | `PAY.md:service_url` | 生产服务地址 | 必须是 HTTPS 域名，不能是 localhost / IP |
+| `sandbox_service_url` | 否 | URL | `PAY.md:sandbox_service_url` | 测试服务地址 | 建议 HTTPS |
+| `version` | 否 | string | `PAY.md:version` | API 版本 | 例如 `v1` |
+
+允许的 `category`：
+
+```text
+ai_ml
+cloud
+compute
+data
+devtools
+finance
+identity
+maps
+media
+messaging
+other
+productivity
+search
+security
+shopping
+storage
+translation
+```
+
+#### B. Endpoint Source
+
+生成目标：`PAY.md:endpoints` 或 `PAY.md:openapi`。
+
+Pay 的 registry 要求 `endpoints` 和 `openapi` 二选一。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `endpoint_source_type` | 是 | enum | UI-only | 选择手写 endpoint 或 OpenAPI | `inline_endpoints` / `openapi` |
+| `openapi.url` | 条件必填 | URL | `PAY.md:openapi.url` | 远程 OpenAPI 文档 | registry 场景必须是完整 `https://` URL |
+| `openapi.content` | 否 | string | `PAY.md:openapi.content` | 内联 OpenAPI 文档 | 适合小 spec |
+| `endpoint.method` | 条件必填 | enum | `PAY.md:endpoints[].method` | HTTP 方法 | `GET / POST / PUT / PATCH / DELETE` |
+| `endpoint.path` | 条件必填 | string | `PAY.md:endpoints[].path` | API 路径 | 不以 production host 开头 |
+| `endpoint.description` | 条件必填 | string | `PAY.md:endpoints[].description` | endpoint 说明 | 建议 32-255 字符，以具体动词开头 |
+| `endpoint.resource` | 否 | string | `PAY.md:endpoints[].resource` | endpoint 分组 | 例如 `jobs / datasets / reports` |
+| `endpoint.pricing` | 条件必填 | object | `PAY.md:endpoints[].pricing` | catalog 的价格描述 | 免费 endpoint 可省略 |
+
+表单规则：
+
+- 有 OpenAPI 时优先让用户填 `openapi.url`，减少手写 endpoint。
+- 手写 endpoint 适合小 API 或没有 OpenAPI 的 provider。
+- `PAY.md` 的 `openapi.path` 不应用于公开 registry；它只适合本地 `pay server start --openapi <file>`。
+
+#### C. Runtime Gateway
+
+生成目标：`provider.yml`。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `runtime.name` | 是 | string | `provider.yml:name` | 运行时 API 名称 | 非空 |
+| `runtime.subdomain` | 是 | string | `provider.yml:subdomain` | gateway host routing | 小写字母、数字、短横线 |
+| `runtime.title` | 是 | string | `provider.yml:title` | gateway UI / debugger 展示 | 可默认同 catalog title |
+| `runtime.description` | 是 | string | `provider.yml:description` | gateway 描述 | 可默认同 catalog description |
+| `runtime.category` | 是 | enum | `provider.yml:category` | API 分类 | 同 catalog category |
+| `runtime.version` | 是 | string | `provider.yml:version` | API 版本 | 例如 `v1` |
+| `runtime.accounting` | 否 | enum | `provider.yml:accounting` | usage counter 维度 | `pooled` / `per_agent` |
+| `runtime.notes` | 否 | string | `provider.yml:notes` | 运维备注 | 不进入 agent 指令 |
+
+#### D. Routing & Upstream Auth
+
+生成目标：`provider.yml:routing`。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `routing.type` | 是 | enum | `routing.type` | 请求处理模式 | `proxy` / `respond` |
+| `routing.url` | 条件必填 | URL | `routing.url` | upstream base URL | `proxy` 时必填 |
+| `routing.auth.method` | 否 | enum | `routing.auth.method` | upstream 认证注入 | `query_param` / `header` / `hmac` / OAuth 类扩展 |
+| `routing.auth.key` | 条件必填 | string | `routing.auth.key` | header 或 query key | auth 存在时必填 |
+| `routing.auth.prefix` | 否 | string | `routing.auth.prefix` | header 前缀 | 例如 `Bearer ` |
+| `routing.auth.value_from_env` | 条件必填 | string | `routing.auth.value_from_env` | secret 环境变量名 | 不允许直接填 secret 明文 |
+| `routing.path_rewrites[].prefix` | 否 | string | `routing.path_rewrites[].prefix` | 路径重写模板 | 可含 `{placeholder}` |
+| `routing.path_rewrites[].env` | 否 | string | `routing.path_rewrites[].env` | 替换值来源 | 必须是 env var 名称 |
+
+表单规则：
+
+- upstream token 不能写入 YAML 明文，只能填写 secret env var 名称。
+- `respond` 模式适合 demo 或支付验证后直接返回固定内容。
+- `proxy` 模式适合真实 provider。
+
+#### E. Operator & Payment Runtime
+
+生成目标：`provider.yml:operator`。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `operator.network` | 是 | enum | `operator.network` | 支付网络 | `localnet / devnet / mainnet`，或扩展为 TRON/BSC 网络 |
+| `operator.currencies.usd` | 是 | string[] | `operator.currencies.usd` | 接受的美元稳定币 | 建议 `USDC / USDT / CASH` |
+| `operator.recipient` | 条件必填 | string | `operator.recipient` | 默认收款地址 | 生产环境建议必填 |
+| `operator.fee_payer` | 否 | boolean | `operator.fee_payer` | 是否由 gateway sponsor fees | 默认 false |
+| `operator.rpc_url` | 否 | URL/env | `operator.rpc_url` | 链 RPC | 生产建议 env 注入 |
+| `operator.signer.backend` | 条件必填 | enum | `operator.signer.backend` | fee payer signer | `gcp-kms / account / file` |
+| `operator.signer.key_name` | 条件必填 | string | GCP KMS signer | KMS key 资源名 | backend 为 `gcp-kms` 时必填 |
+| `operator.signer.pubkey` | 条件必填 | string | GCP KMS signer | signer 公钥 | backend 为 `gcp-kms` 时必填 |
+| `operator.signer.name` | 条件必填 | string | account signer | 本地 Pay account 名 | backend 为 `account` 时必填 |
+| `operator.signer.path` | 条件必填 | path | file signer | keypair 文件路径 | backend 为 `file` 时必填 |
+
+如果接 BANK OF AI / TRON x402，可以在我们自己的扩展表单中增加：
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `payment.implementation` | 是 | enum | gateway 扩展 | SDK 适配器 | `bankofai` |
+| `payment.network` | 是 | enum | gateway 扩展 | TRON/BSC 网络 | `tron:mainnet / tron:nile / tron:shasta / eip155:56 / eip155:97` |
+| `payment.scheme` | 是 | enum | gateway 扩展 | x402 scheme | `exact / exact_permit / exact_gasfree` |
+| `payment.asset` | 是 | string | gateway 扩展 | 付款资产 | `USDT / USDC / USDD` |
+| `payment.pay_to` | 是 | string | gateway 扩展 | 收款地址 | 地址格式按网络校验 |
+| `payment.facilitator_url` | 是 | URL | gateway 扩展 | verify / settle 服务 | HTTPS |
+
+#### F. Runtime Endpoints
+
+生成目标：`provider.yml:endpoints[]`。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `endpoint.method` | 是 | enum | `endpoints[].method` | HTTP 方法 | `GET / POST / PUT / PATCH / DELETE` |
+| `endpoint.path` | 是 | string | `endpoints[].path` | 允许暴露的路径 | 与 upstream / OpenAPI 对齐 |
+| `endpoint.description` | 否 | string | `endpoints[].description` | endpoint 说明 | 建议填写 |
+| `endpoint.resource` | 否 | string | `endpoints[].resource` | 资源分组 | 例如 `models` |
+| `endpoint.routing` | 否 | object | `endpoints[].routing` | per-endpoint routing override | 同顶层 routing |
+| `endpoint.metering` | 条件必填 | object | `endpoints[].metering` | 计费配置 | 免费 endpoint 可省略 |
+
+注意：Pay runtime 的 `endpoints[]` 同时也是 allowlist。未声明的 method + path 即使 upstream 支持，也不会被 gateway 暴露。
+
+#### G. Metering
+
+生成目标：`provider.yml:endpoints[].metering`。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `metering.dimensions[].direction` | 是 | enum | `metering.dimensions[].direction` | 计费方向 | 常用 `usage / input / output` |
+| `metering.dimensions[].unit` | 是 | enum | `metering.dimensions[].unit` | 计费单位 | `requests / tokens / characters / seconds / bytes` 等 |
+| `metering.dimensions[].scale` | 是 | number | `metering.dimensions[].scale` | 每多少单位计价 | 必须大于 0 |
+| `metering.dimensions[].period` | 否 | enum | `metering.dimensions[].period` | 时间型计费周期 | 如 `per_month` |
+| `metering.dimensions[].tiers[].up_to` | 否 | number | `tiers[].up_to` | 阶梯上限 | 省略表示 final tier |
+| `metering.dimensions[].tiers[].price_usd` | 是 | number | `tiers[].price_usd` | 价格 | `price_usd / scale` 不低于 6 位小数精度下限 |
+| `metering.dimensions[].tiers[].condition` | 否 | object | `tiers[].condition` | 条件定价 | 按请求属性匹配 |
+| `metering.dimensions[].tiers[].notes` | 否 | string | `tiers[].notes` | 价格说明 | 仅说明，不参与计费 |
+
+#### H. Variants
+
+生成目标：`provider.yml:endpoints[].metering.variants[]`。
+
+适合模型、语音、SKU 等不同价格路径。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 |
+| --- | --- | --- | --- | --- |
+| `variant.param` | 是 | string | `variants[].param` | 匹配参数名，例如 `model` |
+| `variant.value` | 是 | string | `variants[].value` | 匹配值，例如 `gemini-2.5-pro` |
+| `variant.dimensions` | 是 | object[] | `variants[].dimensions` | 该 variant 的价格 |
+
+#### I. Splits & Recipients
+
+生成目标：`provider.yml:recipients` 和 `metering.splits`。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 | 校验 |
+| --- | --- | --- | --- | --- | --- |
+| `recipients.<alias>.account` | 是 | string | `recipients` | 分账收款地址 | 字面地址或 `${VAR}` |
+| `recipients.<alias>.label` | 否 | string | `recipients` | 展示名 | 非空 |
+| `split.recipient` | 是 | string | `metering.splits[].recipient` | 分账对象 | 必须存在于 `recipients` |
+| `split.amount` | 二选一 | number | `metering.splits[].amount` | 固定金额分账 | 与 `percent` 二选一 |
+| `split.percent` | 二选一 | number | `metering.splits[].percent` | 百分比分账 | 与 `amount` 二选一 |
+| `split.memo` | 否 | string | `metering.splits[].memo` | 分账备注 | 可用于 receipt |
+
+校验规则：
+
+- `amount` 和 `percent` 只能设置一个。
+- split 总额必须小于最低单价。
+- per-tier split 覆盖 metering-level split。
+
+#### J. Session
+
+生成目标：`provider.yml:session`。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 |
+| --- | --- | --- | --- | --- |
+| `session.cap_usdc` | 是 | number | `session.cap_usdc` | session 最大授权额度 |
+| `session.min_voucher_delta` | 否 | number | `session.min_voucher_delta` | 最小 voucher 增量 |
+| `session.modes` | 否 | string[] | `session.modes` | `push / pull` |
+| `session.batch_open_interval_ms` | 否 | number | `session.batch_open_interval_ms` | channel open 批处理间隔 |
+
+#### K. Safety & Operations
+
+生成目标：`PAY.md` markdown body、平台审核记录、dashboard，不一定直接进入 Pay runtime。
+
+| 字段 | 必填 | 类型 | 生成目标 | 用途 |
+| --- | --- | --- | --- | --- |
+| `spend_aware_usage` | 是 | markdown | `PAY.md body` | 减少无效付费调用 |
+| `request_examples` | 是 | JSON/markdown | `PAY.md body` | agent 和人类调试 |
+| `response_examples` | 是 | JSON/markdown | `PAY.md body` | 让 agent 理解输出 |
+| `async_flow_notes` | 条件必填 | markdown | `PAY.md body` | 异步任务触发 / 轮询 / token 说明 |
+| `provider_output_risk` | 是 | enum | review metadata | 是否包含用户生成文本或外部内容 |
+| `confirmation_required_cases` | 是 | markdown | review metadata / PAY.md body | 高价、批量、购买、外部发送等场景 |
+| `support_email` | 是 | email | platform ops | 故障联系 |
+| `status_page` | 否 | URL | platform ops | 服务状态 |
+| `refund_policy` | 是 | markdown | platform ops / seller terms | 退款规则 |
+| `dispute_contact` | 是 | email/URL | platform ops | 争议处理 |
+
+### 14.8 字段到文件的生成关系
+
+```text
+Web Form
+  -> PAY.md
+       -> catalog search
+       -> get_catalog_entry
+       -> agent usage notes
+       -> PR validation
+
+  -> provider.yml
+       -> pay server start
+       -> route matching
+       -> endpoint allowlist
+       -> metering
+       -> splits
+       -> upstream proxy
+
+  -> openapi.json / schemas / examples
+       -> endpoint generation
+       -> request validation
+       -> catalog preview
+
+  -> platform review metadata
+       -> risk review
+       -> seller dashboard
+       -> support / dispute / payout
+```
+
+### 14.9 推荐的前端表单页面
+
+最终 UI 不建议暴露成一个巨大 YAML 编辑器，而是 7 个页面：
+
+1. `Provider Profile`
+2. `Catalog & Agent Usage`
+3. `Endpoint Source`
+4. `Runtime Gateway`
+5. `Pricing, Metering & Splits`
+6. `Safety & Operations`
+7. `Preview, Validate & Submit`
+
+最后一页展示四个 preview：
+
+- `Catalog Card Preview`
+- `PAY.md Preview`
+- `provider.yml Preview`
+- `Validation Result`
+
 ## 15. 钱流与结算模式
 
 钱流设计决定平台的合规压力、卖家信任成本和后续对账复杂度。建议从 MVP 到成熟版本支持不同模式，但不要一开始就把所有模式都做复杂。
