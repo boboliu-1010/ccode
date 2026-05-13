@@ -543,7 +543,321 @@ gateway_response_sent
 - 支持 capped session。
 - 实现 remaining allowance 和 expiry。
 
-## 14. 推荐技术栈
+## 14. 卖家协作与上架流程
+
+gateway 如果要做成 pay.sh 风格的平台，卖家和平台的协作不能停留在“给一个 API 地址”。卖家需要提交一个可执行的 provider contract，平台负责把它变成 catalog entry、gateway route、payment requirements 和审计对象。
+
+### 14.1 卖家需要提供什么
+
+卖家提交的核心材料是 `provider.yaml`，并配套 schema、示例和运行信息。
+
+```text
+provider.yaml
+schemas/
+  endpoint.response.json
+examples/
+  endpoint.request.json
+  endpoint.response.json
+```
+
+卖家需要提供：
+
+- provider 基本信息：名称、描述、官网、支持邮箱、状态页。
+- endpoint 列表：method、path、输入参数、输出 schema、示例请求。
+- pricing：固定价格、阶梯价格或 metered pricing。
+- payment：网络、资产、scheme、收款地址、facilitator。
+- upstream 接入方式：base URL、认证方式、sandbox endpoint。
+- policy：调用上限、是否需要确认、是否要求 idempotency key。
+- 争议和退款规则：失败调用是否退款、异步任务如何计费。
+
+示例：
+
+```yaml
+provider:
+  id: acme-weather
+  name: Acme Weather API
+  support_email: ops@acme.example.com
+
+payment:
+  implementation: bankofai
+  network: tron:mainnet
+  scheme: exact_gasfree
+  asset: USDT
+  pay_to: TProviderWalletAddress
+  facilitator_url: https://facilitator.example.com
+
+gateway:
+  upstream_base_url: https://api.acme.example.com
+  auth:
+    type: bearer
+    token_env: ACME_API_TOKEN
+
+endpoints:
+  - id: current-weather
+    method: GET
+    path: /v1/current
+    pricing:
+      type: fixed
+      amount: "0.002"
+      currency: USDT
+    policy:
+      max_calls_per_task: 10
+      confirmation_required: false
+      idempotency_required: false
+```
+
+### 14.2 平台负责什么
+
+平台负责把 seller 提交的配置变成可运行能力：
+
+- 校验 provider spec。
+- 测试 sandbox endpoint。
+- 测试未支付请求是否返回 `402`。
+- 测试支付后请求是否能走通。
+- 校验价格、网络、收款地址、token contract。
+- 检查 usage notes 是否包含 prompt injection 风险。
+- 生成 catalog preview。
+- 审核通过后发布到 catalog。
+- gateway 热加载 route 和 pricing rule。
+- 记录 paid request、seller revenue、platform fee。
+
+平台不是简单展示 seller 信息，而是在运行时承担：
+
+```text
+catalog discovery
+  -> gateway enforcement
+  -> payment verification
+  -> upstream proxy
+  -> usage ledger
+  -> settlement reporting
+```
+
+### 14.3 卖家负责什么
+
+卖家负责 API 能力本身：
+
+- API 可用性。
+- 数据或结果质量。
+- 上游服务 SLA。
+- 定价策略。
+- 收款地址维护。
+- 退款和争议配合。
+- endpoint schema 和示例维护。
+
+平台不应该替卖家承诺业务结果，只能承诺 gateway、payment、catalog 和审计链路。
+
+### 14.4 上架流程
+
+```text
+Seller 提交 provider.yaml
+  -> 平台静态校验
+  -> sandbox endpoint smoke test
+  -> x402 / BANK OF AI payment flow test
+  -> catalog preview
+  -> 人工审核
+  -> publish catalog
+  -> gateway runtime reload
+  -> seller dashboard 开通
+```
+
+推荐实现两个入口：
+
+- GitHub PR：适合技术型 provider。
+- Web Console：适合普通 API 供应商，由后台生成 provider spec。
+
+## 15. 钱流与结算模式
+
+钱流设计决定平台的合规压力、卖家信任成本和后续对账复杂度。建议从 MVP 到成熟版本支持不同模式，但不要一开始就把所有模式都做复杂。
+
+### 15.1 参与方
+
+```text
+Buyer / User
+  -> 授权支付
+
+Platform / Gateway
+  -> 生成 402
+  -> 校验 proof
+  -> 记录 usage 和 revenue
+
+Seller / Provider
+  -> 提供 API
+  -> 收取 API 调用收入
+
+Facilitator / Chain
+  -> 验证 payment payload
+  -> settle 链上交易
+```
+
+### 15.2 模式 A：直付卖家，平台后结算佣金
+
+```text
+买家钱包
+  -> 卖家钱包
+  -> 平台根据链上记录计算佣金
+  -> 卖家周期性结算平台服务费
+```
+
+优点：
+
+- 卖家直接收钱，信任成本低。
+- 平台不持有用户资金。
+- 链上可审计。
+
+缺点：
+
+- 平台佣金依赖后结算。
+- 退款和争议复杂。
+- 多卖家对账成本较高。
+
+适用场景：
+
+- 大 provider。
+- 已有结算能力的 provider。
+- 平台只做 discovery 和 gateway enforcement。
+
+### 15.3 模式 B：平台代收，再结算给卖家
+
+```text
+买家钱包
+  -> 平台收款钱包
+  -> 平台 ledger 记 seller balance
+  -> 平台按账期 payout 给卖家
+```
+
+优点：
+
+- 平台能统一处理退款、争议、对账。
+- seller onboarding 更简单。
+- 适合 MVP 快速验证。
+
+缺点：
+
+- 平台碰钱，合规压力更高。
+- 卖家需要信任平台结算。
+- 需要 payout、balance、fee、dispute 系统。
+
+适用场景：
+
+- MVP。
+- 小卖家。
+- 平台需要统一发票、统一余额、统一预算。
+
+### 15.4 模式 C：facilitator / split contract 自动分账
+
+```text
+买家支付 0.01 USDT
+  -> Facilitator / Split Contract
+       -> Seller: 0.009 USDT
+       -> Platform: 0.001 USDT
+```
+
+优点：
+
+- 一次支付完成 seller revenue 和 platform fee。
+- 卖家和平台都可以链上审计。
+- 平台不需要周期性追佣。
+- 更符合 x402 的轻量 pay-per-call 模型。
+
+缺点：
+
+- 依赖 facilitator 或 split contract 能力。
+- 退款和 dispute 仍需要额外流程。
+- TRON / BANK OF AI 方案需要确认当前 facilitator 是否支持自动分账。
+
+推荐方向：
+
+- MVP 用平台代收或 facilitator 标准收款。
+- 中期支持 split。
+- 长期支持 seller 自选 settlement mode。
+
+### 15.5 账务对象
+
+平台至少需要这些账务对象：
+
+```ts
+type Seller = {
+  id: string
+  name: string
+  status: 'pending' | 'active' | 'suspended'
+  payoutWallet: string
+  settlementMode: 'direct' | 'platform_custody' | 'split'
+  platformFeeBps: number
+}
+```
+
+```ts
+type PaidRequest = {
+  id: string
+  sellerId: string
+  endpointId: string
+  buyerWallet: string
+  grossAmount: string
+  platformFee: string
+  sellerRevenue: string
+  currency: 'USDT' | 'USDC'
+  network: string
+  txHash?: string
+  paymentProof: string
+  status: 'verified' | 'settled' | 'refunded' | 'disputed'
+  createdAt: string
+}
+```
+
+```ts
+type SellerBalance = {
+  sellerId: string
+  currency: 'USDT' | 'USDC'
+  pending: string
+  available: string
+  paidOut: string
+}
+```
+
+```ts
+type Payout = {
+  id: string
+  sellerId: string
+  amount: string
+  currency: 'USDT' | 'USDC'
+  txHash?: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+}
+```
+
+### 15.6 推荐落地顺序
+
+短期 MVP：
+
+```text
+平台代收
+  -> paid_request ledger
+  -> seller_balance
+  -> 周期性 payout
+```
+
+原因是实现最简单，便于处理退款、争议和 seller onboarding。
+
+中期：
+
+```text
+facilitator / split contract 自动分账
+```
+
+原因是减少平台资金沉淀，提高卖家信任。
+
+长期：
+
+```text
+多结算模式并存
+```
+
+- 小卖家用平台代收。
+- 大卖家用直付或 split。
+- 企业 provider 用 invoice / private billing。
+- agent 和 buyer 仍然看到统一的 x402 支付体验。
+
+## 16. 推荐技术栈
 
 如果目标是贴近 `pay` 生态：
 
@@ -559,7 +873,7 @@ gateway_response_sent
 - SQLite：本地 ledger。
 - Redis：可选。
 
-## 15. 和 Claude Code / Agent 的集成方式
+## 17. 和 Claude Code / Agent 的集成方式
 
 面向 agent 的关键点不是让 agent 知道私钥，而是让 agent 只知道：
 
@@ -580,7 +894,7 @@ pay: 本地钱包授权。
 Gateway: 校验 proof 并返回 API 结果。
 ```
 
-## 16. 关键设计判断
+## 18. 关键设计判断
 
 1. Gateway 应该优先做 reverse proxy，而不是要求 provider 重写 API。
 2. Challenge 必须足够结构化，不能把价格、网络、收款方藏在自由文本里。
@@ -589,7 +903,7 @@ Gateway: 校验 proof 并返回 API 结果。
 5. Debugger 是 MVP 必需品，因为 402 flow 涉及 provider、client、wallet、network 多方状态。
 6. Mainnet auto-pay 不能作为默认能力，必须先有 sandbox 和显式确认。
 
-## 17. 最小可用架构总结
+## 19. 最小可用架构总结
 
 ```text
 Client / Agent
